@@ -8,6 +8,7 @@ import { Token as TokenType } from '../types';
 
 interface GridCell {
     color: string;
+    
 }
 
 const Grid: React.FC = () => {
@@ -21,10 +22,21 @@ const Grid: React.FC = () => {
     const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
     const [tokens, setTokens] = useState<TokenType[]>([]); // Tokens on the grid
+    const [zoom, setZoom] = useState(1); // Zoom level [0.1, 10]
 
-     // Initial color palette
-     const initialPalette = ['#0D0D0D', '#4D4D4D', '#B3B3B3', '#5C4033', '#8B1A1A', '#D0F0C0',
-     '#789EC6', '#FFF8DC', '#7D7D7D', '#1A2421']
+
+    // zoom related
+    const zoomIn = () => {
+        setZoom(zoom + 0.1);
+    }
+
+    const zoomOut = () => {
+        setZoom(zoom - 0.1);
+    }
+
+    // Initial color palette
+    const initialPalette = ['#0D0D0D', '#4D4D4D', '#B3B3B3', '#5C4033', '#8B1A1A', '#D0F0C0',
+        '#789EC6', '#FFF8DC', '#7D7D7D', '#1A2421']
     const [colorPalette, setColorPalette] = useState<string[]>(initialPalette);
     const [selectedPaletteIndex, setSelectedPaletteIndex] = useState<number | null>(null);
 
@@ -72,21 +84,20 @@ const Grid: React.FC = () => {
     };
 
     const handleCellClick = (rowIndex: number, colIndex: number) => {
-        if (tool === 'paintbrush')
-        {
-        paintCell(rowIndex, colIndex, selectedColor);
+        if (tool === 'paintbrush') {
+            paintCell(rowIndex, colIndex, selectedColor);
         }
-        else if (tool === 'pan')
-        {
+        else if (tool === 'pan') {
             console.log('pan');
         }
-        else if (tool === 'token')
-        {
+        else if (tool === 'token') {
             addToken({
                 id: Math.random().toString(36).substr(2, 9),
                 name: 'Token',
                 position: { x: colIndex * cellSize, y: rowIndex * cellSize },
-                size: { width: cellSize, height: cellSize }
+                size: { width: cellSize, height: cellSize },
+                color: selectedColor,
+
             });
         }
     }
@@ -101,25 +112,25 @@ const Grid: React.FC = () => {
     const handleMouseUpPainting = () => setPainting(false);
     const handleMouseDownPanning = (event: React.MouseEvent) => {
         if (tool === 'pan' && gridRef.current) {
-          event.preventDefault(); // Prevent default action
-          const startX = event.clientX;
-          const startY = event.clientY;
-          let newPos = { x: startX, y: startY };
-          console.log(startX, startY);
-    
-          const handleMouseMovePanning = (moveEvent: MouseEvent) => {
-            const dx = moveEvent.clientX - newPos.x;
-            const dy = moveEvent.clientY - newPos.y;
-            newPos = { x: moveEvent.clientX, y: moveEvent.clientY };
-            if (gridRef.current) {
-                gridRef.current.scrollLeft -= dx;
-                gridRef.current.scrollTop -= dy;
+            event.preventDefault(); // Prevent default action
+            const startX = event.clientX;
+            const startY = event.clientY;
+            let newPos = { x: startX, y: startY };
+            console.log(startX, startY);
 
-            }
-            console.log(dx, dy);
-            
-          };
-    
+            const handleMouseMovePanning = (moveEvent: MouseEvent) => {
+                const dx = moveEvent.clientX - newPos.x;
+                const dy = moveEvent.clientY - newPos.y;
+                newPos = { x: moveEvent.clientX, y: moveEvent.clientY };
+                if (gridRef.current) {
+                    gridRef.current.scrollLeft -= dx;
+                    gridRef.current.scrollTop -= dy;
+
+                }
+                console.log(dx, dy);
+
+            };
+
             const handleMouseUpPanning = () => {
                 if (gridRef.current) {
                     gridRef.current.removeEventListener('mousemove', handleMouseMovePanning);
@@ -134,8 +145,8 @@ const Grid: React.FC = () => {
 
 
         }
-      };
-    
+    };
+
     // Adjust the grid size on window resize
     useEffect(() => {
         const adjustGridSize = () => {
@@ -152,19 +163,19 @@ const Grid: React.FC = () => {
 
         const handleKeyDown = (event: KeyboardEvent) => {
             switch (event.key) {
-              case 'b':
-                setTool('paintbrush');
-                break;
-              case 'v':
-                setTool('pan');
-                break;
-              default:
-                break;
+                case 'b':
+                    setTool('paintbrush');
+                    break;
+                case 'v':
+                    setTool('pan');
+                    break;
+                default:
+                    break;
             }
-          };
-      
-          window.addEventListener('keydown', handleKeyDown);
-      
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
@@ -175,58 +186,63 @@ const Grid: React.FC = () => {
     // Rendering the grid
     return (
         <div>
-        {/* Toolbar */}
-        <div className="toolbar" style={{ position: 'absolute', bottom: '10px', left: '10px' }}>
-          <button onClick={() => setTool('paintbrush')}>Paintbrush</button>
-          <button onClick={() => setTool('pan')}>Pan</button>
-          <button onClick={() => setTool('token')}>Token</button>
-          <input type="color" value={selectedColor} onChange={(e) => handleColorChange(e.target.value)} />
-          {colorPalette.map((color, index) => (
+            {/* Toolbar */}
+            <div className="toolbar" style={{ position: 'absolute', bottom: '10px', left: '10px' }}>
+                <button onClick={() => setTool('paintbrush')}>Paintbrush</button>
+                <button onClick={() => setTool('pan')}>Pan</button>
+                <button onClick={() => setTool('token')}>Token</button>
+                <button onClick={() => zoomIn()}>+</button>
+                <button onClick={() => zoomOut()}>-</button>
+                <input type="color" value={selectedColor} onChange={(e) => handleColorChange(e.target.value)} />
+                {colorPalette.map((color, index) => (
                     <button key={index} style={{ backgroundColor: color }} onClick={() => handlePaletteColorClick(index)} />
                 ))}
-            <button onClick={() => setDisplayBorders(!displayBorders)}>Toggle Borders</button>
-        </div>
-  
-        {/* Grid */}
-        <div
-          onMouseDown={tool === 'paintbrush' ? handleMouseDownPainting : tool === 'pan' ? handleMouseDownPanning : undefined}
-          onMouseUp={tool === 'paintbrush' ? handleMouseUpPainting : undefined}
-          style={{ width: '100%', height: '100vh' }}
-        >
-            <div 
-            className="grid"
-            ref={gridRef}
-            >
-                {grid.map((row, rowIndex) => (
-                    <div key={rowIndex} className="grid-row">
-                        {row.map((cell, colIndex) => (
-                            <div
-                                key={colIndex}
-                                className="grid-cell"
-                                onClick={() => handleCellClick(rowIndex, colIndex)}
-                                onContextMenu={(e) => handleCellRightClick(e, rowIndex, colIndex)}
-                                onMouseEnter={() => handleMouseEnterPainting(rowIndex, colIndex)}
-                                style={{ 
-                                    backgroundColor: cell.color,
-                                    width: `${cellSize}px`,
-                                    height: `${cellSize}px`,
-                                    border: displayBorders ? '0.5px solid #ccc' : 'none'
-                                
-                                    
-                                 }}
-                            />
-                        ))}
-                    </div>
-                ))}
+                <button onClick={() => setDisplayBorders(!displayBorders)}>Toggle Borders</button>
             </div>
 
-            {/* Tokens */}
-            <div className="tokens">
-                {tokens.map((token) => (
-                    <Token key={token.id} token={token} removeToken={removeToken} />
-                ))}
+            {/* Grid */}
+            <div
+                onMouseDown={tool === 'paintbrush' ? handleMouseDownPainting : tool === 'pan' ? handleMouseDownPanning : undefined}
+                onMouseUp={tool === 'paintbrush' ? handleMouseUpPainting : undefined}
+                style={{ 
+                    width: '100%', 
+                    height: '100vh',
+                 }}
+            >
+                <div
+                    className="grid"
+                    ref={gridRef}
+                >
+                    {/* Tokens */}
+                    {tokens.map((token) => (
+                        <Token key={token.id} token={token} zoom={zoom} />
+                    ))}
+                    {/* Grid cells */}
+                    {grid.map((row, rowIndex) => (
+                        <div key={rowIndex} className="grid-row">
+                            {row.map((cell, colIndex) => (
+                                <div
+                                    key={colIndex}
+                                    className="grid-cell"
+                                    onClick={() => handleCellClick(rowIndex, colIndex)}
+                                    onContextMenu={(e) => handleCellRightClick(e, rowIndex, colIndex)}
+                                    onMouseEnter={() => handleMouseEnterPainting(rowIndex, colIndex)}
+                                    style={{
+                                        backgroundColor: cell.color,
+                                        width: `${cellSize * zoom}px`,
+                                        height: `${cellSize * zoom}px`,
+                                        border: displayBorders ? '0.5px solid #ccc' : 'none'
+
+
+                                    }}
+                                />
+
+                            ))}
+                        </div>
+                    ))}
+                </div>
+
             </div>
-        </div>
         </div>
     );
 };

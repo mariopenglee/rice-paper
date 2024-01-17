@@ -4,6 +4,7 @@ interface Token {
     name: string;
     position: { x: number; y: number };
     size: { width: number; height: number };
+    color: string;
   }
   
   interface GridCell {
