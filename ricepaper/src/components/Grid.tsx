@@ -11,6 +11,7 @@ interface GridCell {
     
 }
 
+
 const Grid: React.FC = () => {
     const initialGridSize = 100; // Initial grid size
     const cellSize = 30; // Assuming each cell
@@ -23,6 +24,7 @@ const Grid: React.FC = () => {
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
     const [tokens, setTokens] = useState<TokenType[]>([]); // Tokens on the grid
     const [zoom, setZoom] = useState(1); // Zoom level [0.1, 10]
+
 
 
     // zoom related
@@ -47,6 +49,11 @@ const Grid: React.FC = () => {
             Array.from({ length: gridSize }, () => ({ color: initialColor }))
         );
     };
+
+
+
+
+
 
     const [grid, setGrid] = useState<GridCell[][]>(createInitialGrid());
 
@@ -213,12 +220,17 @@ const Grid: React.FC = () => {
                     className="grid"
                     ref={gridRef}
                 >
+                    
+
                     {/* Tokens */}
                     {tokens.map((token) => (
                         <Token key={token.id} token={token} zoom={zoom} />
                     ))}
-                    {/* Grid cells */}
+                    {/* Grid cells 
+                    Be sure to include the dots. The dots appear at the intersection of the grid lines.
+                    */}
                     {grid.map((row, rowIndex) => (
+                        <>
                         <div key={rowIndex} className="grid-row">
                             {row.map((cell, colIndex) => (
                                 <div
@@ -239,7 +251,35 @@ const Grid: React.FC = () => {
 
                             ))}
                         </div>
+                        <div key = {rowIndex} 
+                        className="dot-row"
+                        style={
+                            {
+                                display: 'flex',
+                                flexDirection: 'row',
+                                gap: `${(cellSize - 3) * zoom}px`,
+                                
+                            }
+                        }
+                        >
+                            {Array.from({ length: gridSize + 1 }, (_, colIndex) => (
+                                <div
+                                    key={colIndex}
+                                    className="dot"
+                                    style={{
+                                        width: `${3 * zoom}px`,
+                                        height: `${3 * zoom}px`,
+                                        backgroundColor: 'black',
+                                        borderRadius: '50%',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                                ))}
+                        </div>
+                        </>
                     ))}
+
+
                 </div>
 
             </div>

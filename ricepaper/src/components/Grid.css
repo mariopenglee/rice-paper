@@ -1,7 +1,7 @@
 /* Add this to your main CSS file */
 
 .grid {
-    position: relative;
+    position: absolute;
     display: flex;
     overflow: scroll;
     flex-direction: column;
@@ -14,12 +14,27 @@
   
   .grid-row {
     display: flex;
+
   }
   
   .grid-cell {
     box-sizing: border-box;
     cursor: pointer;
   }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #000;
+    cursor: pointer;
+  }
+
+  .dot-row {
+    display: flex;
+    align-items: center;
+  }
+
 
 .toolbar {
     position: absolute;
@@ -34,3 +49,19 @@
     z-index: 1000; /* Ensure it's above other elements */
   }
   
+  .dots {
+    position: absolute;
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    z-index: 2; /* Ensure it's above other elements */
+  }
+
+    .dot {
+
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #000;
+        cursor: pointer;
+    }
