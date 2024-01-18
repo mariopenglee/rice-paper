@@ -3,34 +3,17 @@
 import React from 'react';
 import { Token as TokenType } from '../types';
 
+
 interface TokenProps {
   token: TokenType;
-  zoom: number;
+  style: React.CSSProperties;
+  onClick: () => void;
 }
 
-const Token: React.FC<TokenProps> = ({ token, zoom }) => {
-    console.log(token);
-    console.log(token.position);
-    console.log(token.position.x);
-    console.log(token.color);
-    console.log(zoom)
-  const style = {
-    background: token.color,
-    position: 'absolute',
-    top: `${token.position.y - 1120 * zoom}px`,
-    left: `${token.position.x - 1090 * zoom}px`,
-    width: `${token.size.width * zoom}px`,
-    height: `${token.size.height * zoom}px`,
-    zIndex: 1,
-    borderRadius: '50%',
-    border: '1px solid black',
-    boxSizing: 'border-box',
-
-  };
-
-    return (
-        <div className="token" style={style}></div>
-    );
+const Token: React.FC<TokenProps> = ({ token, style, onClick }) => {
+  return (
+    <div className="token" style={{ ...style, background: token.color }} onClick={onClick}></div>
+  );
 };
 
 export default Token;

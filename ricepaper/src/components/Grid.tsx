@@ -8,7 +8,7 @@ import { Token as TokenType } from '../types';
 
 interface GridCell {
     color: string;
-    
+    tokens?: TokenType[];
 }
 
 
@@ -22,8 +22,13 @@ const Grid: React.FC = () => {
     const [tool, setTool] = useState('paintbrush'); // 'paintbrush' or 'pan'
     const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
-    const [tokens, setTokens] = useState<TokenType[]>([]); // Tokens on the grid
     const [zoom, setZoom] = useState(1); // Zoom level [0.1, 10]
+    const [clickPositions, setClickPositions] = useState([]);
+
+    const handleScreenClick = (event: MouseEvent) => {
+        const newClickPosition = { x: event.clientX, y: event.clientY };
+        setClickPositions([...clickPositions, newClickPosition]);
+    }
 
 
 
@@ -80,15 +85,6 @@ const Grid: React.FC = () => {
         }
     };
 
-    // Function to add a token
-    const addToken = (token: TokenType) => {
-        setTokens([...tokens, token]);
-    };
-
-    // Function to remove a token
-    const removeToken = (token: TokenType) => {
-        setTokens(tokens.filter((t) => t.id !== token.id));
-    };
 
     const handleCellClick = (rowIndex: number, colIndex: number) => {
         if (tool === 'paintbrush') {
@@ -98,16 +94,19 @@ const Grid: React.FC = () => {
             console.log('pan');
         }
         else if (tool === 'token') {
-            addToken({
-                id: Math.random().toString(36).substr(2, 9),
-                name: 'Token',
-                position: { x: colIndex * cellSize, y: rowIndex * cellSize },
-                size: { width: cellSize, height: cellSize },
-                color: selectedColor,
-
-            });
+            console.log('token');
         }
     }
+
+    const handleDotClick = (rowIndex: number, colIndex: number) => {
+        if (tool === 'token') {
+            console.log('dot');
+            console.log(rowIndex, colIndex);
+            addToken(rowIndex, colIndex, { color: selectedColor });
+        }
+        
+    }
+
     const handleCellRightClick = (event: React.MouseEvent, rowIndex: number, colIndex: number) => {
         event.preventDefault();
         paintCell(rowIndex, colIndex, initialColor);
@@ -123,7 +122,6 @@ const Grid: React.FC = () => {
             const startX = event.clientX;
             const startY = event.clientY;
             let newPos = { x: startX, y: startY };
-            console.log(startX, startY);
 
             const handleMouseMovePanning = (moveEvent: MouseEvent) => {
                 const dx = moveEvent.clientX - newPos.x;
@@ -134,7 +132,6 @@ const Grid: React.FC = () => {
                     gridRef.current.scrollTop -= dy;
 
                 }
-                console.log(dx, dy);
 
             };
 
@@ -154,6 +151,17 @@ const Grid: React.FC = () => {
         }
     };
 
+    const addToken = (rowIndex: number, colIndex: number, token: TokenType) => {
+        console.log('add token');
+        console.log(rowIndex, colIndex, token);
+        const newGrid = [...grid];
+        if (!newGrid[rowIndex][colIndex].tokens) newGrid[rowIndex][colIndex].tokens = [];
+        newGrid[rowIndex][colIndex].tokens.push(token);
+        setGrid(newGrid);
+    }
+    
+
+    
     // Adjust the grid size on window resize
     useEffect(() => {
         const adjustGridSize = () => {
@@ -207,6 +215,8 @@ const Grid: React.FC = () => {
                 <button onClick={() => setDisplayBorders(!displayBorders)}>Toggle Borders</button>
             </div>
 
+
+
             {/* Grid */}
             <div
                 onMouseDown={tool === 'paintbrush' ? handleMouseDownPainting : tool === 'pan' ? handleMouseDownPanning : undefined}
@@ -216,71 +226,65 @@ const Grid: React.FC = () => {
                     height: '100vh',
                  }}
             >
+               <div 
+               className="grid" 
+               ref={gridRef}>
+    {grid.map((row, rowIndex) => (
+        <div key={rowIndex} className="grid-row">
+            {row.map((cell, colIndex) => (
                 <div
-                    className="grid"
-                    ref={gridRef}
+                    key={colIndex}
+                    className="grid-cell"
+                    onClick={() => handleCellClick(rowIndex, colIndex)}
+                    onContextMenu={(e) => handleCellRightClick(e, rowIndex, colIndex)}
+                    onMouseEnter={() => handleMouseEnterPainting(rowIndex, colIndex)}
+                    style={{
+                        position: 'relative', // Set position relative for absolute positioning of the dot
+                        backgroundColor: cell.color,
+                        width: `${cellSize * zoom}px`,
+                        height: `${cellSize * zoom}px`,
+                        border: displayBorders ? '0.5px solid #ccc' : 'none'
+                    }}
                 >
-                    
+                    <div
+                        className="dot"
+                        style={{
+                            position: 'absolute',
+                            top: `-${2 * zoom/2}px`,
+                            left: `-${2 * zoom/2}px`,
+                            width: `${2 * zoom}px`,
+                            height: `${2 * zoom}px`,
+                            backgroundColor: '#000',
+                            borderRadius: '50%',
+                        }}
+                        onClick={() => handleDotClick(rowIndex, colIndex)}
+                    />
 
                     {/* Tokens */}
-                    {tokens.map((token) => (
-                        <Token key={token.id} token={token} zoom={zoom} />
+                    {cell.tokens && cell.tokens.map((token, tokenIndex) => (
+                        <Token
+                            key={tokenIndex}
+                            token={token}
+                            style={{
+                                position: 'absolute',
+                                top: `-${30 * zoom/2}px`,
+                                left: `-${30 * zoom/2}px`,
+                                width: `${30 * zoom}px`,
+                                height: `${30 * zoom}px`,
+                                borderRadius: '50%',
+                                border: '1px solid #000',
+                                boxSizing: 'border-box',
+                                opacity: 0.9,
+
+                            }}
+                        />
                     ))}
-                    {/* Grid cells 
-                    Be sure to include the dots. The dots appear at the intersection of the grid lines.
-                    */}
-                    {grid.map((row, rowIndex) => (
-                        <>
-                        <div key={rowIndex} className="grid-row">
-                            {row.map((cell, colIndex) => (
-                                <div
-                                    key={colIndex}
-                                    className="grid-cell"
-                                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                                    onContextMenu={(e) => handleCellRightClick(e, rowIndex, colIndex)}
-                                    onMouseEnter={() => handleMouseEnterPainting(rowIndex, colIndex)}
-                                    style={{
-                                        backgroundColor: cell.color,
-                                        width: `${cellSize * zoom}px`,
-                                        height: `${cellSize * zoom}px`,
-                                        border: displayBorders ? '0.5px solid #ccc' : 'none'
-
-
-                                    }}
-                                />
-
-                            ))}
-                        </div>
-                        <div key = {rowIndex} 
-                        className="dot-row"
-                        style={
-                            {
-                                display: 'flex',
-                                flexDirection: 'row',
-                                gap: `${(cellSize - 3) * zoom}px`,
-                                
-                            }
-                        }
-                        >
-                            {Array.from({ length: gridSize + 1 }, (_, colIndex) => (
-                                <div
-                                    key={colIndex}
-                                    className="dot"
-                                    style={{
-                                        width: `${3 * zoom}px`,
-                                        height: `${3 * zoom}px`,
-                                        backgroundColor: 'black',
-                                        borderRadius: '50%',
-                                        boxSizing: 'border-box',
-                                    }}
-                                />
-                                ))}
-                        </div>
-                        </>
-                    ))}
-
-
                 </div>
+            ))}
+            
+        </div>
+    ))}
+</div>
 
             </div>
         </div>

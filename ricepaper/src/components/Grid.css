@@ -22,13 +22,7 @@
     cursor: pointer;
   }
 
-  .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #000;
-    cursor: pointer;
-  }
+
 
   .dot-row {
     display: flex;
