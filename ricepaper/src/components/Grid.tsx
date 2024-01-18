@@ -25,6 +25,9 @@ const Grid: React.FC = () => {
     const [zoom, setZoom] = useState(1); // Zoom level [0.1, 10]
     const [clickPositions, setClickPositions] = useState([]);
 
+    const [tokens, setTokens] = useState<TokenType[]>([]); // State for tokens
+
+
     const handleScreenClick = (event: MouseEvent) => {
         const newClickPosition = { x: event.clientX, y: event.clientY };
         setClickPositions([...clickPositions, newClickPosition]);
@@ -55,6 +58,54 @@ const Grid: React.FC = () => {
         );
     };
 
+    
+
+    // Function to add a new token
+    const addToken = useCallback((x: number, y: number, token: TokenType) => {
+        setTokens([...tokens, { ...token, x, y, id: tokens.length }]);
+        console.log(tokens);
+    }, [tokens]);
+
+    // Drag and Drop handlers
+    const onDragStart = (event, id) => {
+        // Set data and indicate what is being dragged
+        event.dataTransfer.setData("token-id", id);
+    };
+
+    const onDragOver = (event) => {
+        event.preventDefault(); // Necessary to allow dropping
+    };
+
+    const onDrop = (event, rowIndex, colIndex) => {
+        const id = event.dataTransfer.getData("token-id");
+        moveToken(id, colIndex, rowIndex);
+    };
+
+    // Rendering tokens
+    const renderedTokens = tokens.map(token => 
+       {
+              return (
+                <Token
+                     key={token.id}
+                     token={token}
+                     style={{
+                          position: 'absolute',
+                          left: `${token.y * cellSize * zoom - cellSize/2}px`,
+                            top: `${token.x * cellSize * zoom - cellSize/2}px`,
+                          width: `${cellSize * zoom}px`,
+                          height: `${cellSize * zoom}px`,
+                            zIndex: 1,
+                            cursor: 'grab',
+                            border: '1px solid #000',
+                            borderRadius: '50%',
+                     }}
+                     onClick={() => console.log('clicked')}
+                     onDragStart={(event) => onDragStart(event, token.id)}
+                />
+              );
+
+       }
+    );
 
 
 
@@ -98,11 +149,11 @@ const Grid: React.FC = () => {
         }
     }
 
-    const handleDotClick = (rowIndex: number, colIndex: number) => {
+    const handleDotClick = (rowIndex: number, colIndex: number, color: string) => {
         if (tool === 'token') {
             console.log('dot');
             console.log(rowIndex, colIndex);
-            addToken(rowIndex, colIndex, { color: selectedColor });
+            addToken(rowIndex, colIndex, { color });
         }
         
     }
@@ -151,15 +202,6 @@ const Grid: React.FC = () => {
         }
     };
 
-    const addToken = (rowIndex: number, colIndex: number, token: TokenType) => {
-        console.log('add token');
-        console.log(rowIndex, colIndex, token);
-        const newGrid = [...grid];
-        if (!newGrid[rowIndex][colIndex].tokens) newGrid[rowIndex][colIndex].tokens = [];
-        newGrid[rowIndex][colIndex].tokens.push(token);
-        setGrid(newGrid);
-    }
-    
 
     
     // Adjust the grid size on window resize
@@ -229,6 +271,18 @@ const Grid: React.FC = () => {
                <div 
                className="grid" 
                ref={gridRef}>
+                <div
+                className="grid-overlay"
+                style={{
+                    position: 'absolute',
+                    top: '0',
+                    left: '0',
+                    width: 'fit-content',
+                    height: 'fit-content',
+                }}
+            >
+                
+                
     {grid.map((row, rowIndex) => (
         <div key={rowIndex} className="grid-row">
             {row.map((cell, colIndex) => (
@@ -247,43 +301,40 @@ const Grid: React.FC = () => {
                     }}
                 >
                     <div
+                    className="dot-container"
+                    onClick={() => handleDotClick(rowIndex, colIndex, selectedColor)}
+                    style={{
+                        position: 'absolute',
+                        top: `-${15 * zoom}px`, // Half of 30px
+                        left: `-${15 * zoom}px`, // Half of 30px
+                        width: `${30 * zoom}px`,
+                        height: `${30 * zoom}px`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                    }}
+                >
+                     <div
                         className="dot"
                         style={{
-                            position: 'absolute',
-                            top: `-${2 * zoom/2}px`,
-                            left: `-${2 * zoom/2}px`,
                             width: `${2 * zoom}px`,
                             height: `${2 * zoom}px`,
                             backgroundColor: '#000',
                             borderRadius: '50%',
                         }}
-                        onClick={() => handleDotClick(rowIndex, colIndex)}
                     />
+                    </div>
 
-                    {/* Tokens */}
-                    {cell.tokens && cell.tokens.map((token, tokenIndex) => (
-                        <Token
-                            key={tokenIndex}
-                            token={token}
-                            style={{
-                                position: 'absolute',
-                                top: `-${30 * zoom/2}px`,
-                                left: `-${30 * zoom/2}px`,
-                                width: `${30 * zoom}px`,
-                                height: `${30 * zoom}px`,
-                                borderRadius: '50%',
-                                border: '1px solid #000',
-                                boxSizing: 'border-box',
-                                opacity: 0.9,
-
-                            }}
-                        />
-                    ))}
+                    
                 </div>
             ))}
             
         </div>
     ))}
+    {/* Tokens */}
+    {renderedTokens}
+    </div>
 </div>
 
             </div>
