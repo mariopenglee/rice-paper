@@ -3,9 +3,15 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './Grid.css';
 import Toolbox from './Toolbox';
+import { VariableSizeGrid as VGrid } from 'react-window';
 import Token from './Token';
+import Dot from './Dot';
 import { Token as TokenType } from '../types';
-
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useDrop } from 'react-dnd';
+import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
+import { motion } from 'framer-motion';
 interface GridCell {
     color: string;
     tokens?: TokenType[];
@@ -22,10 +28,18 @@ const Grid: React.FC = () => {
     const [tool, setTool] = useState('paintbrush'); // 'paintbrush' or 'pan'
     const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
-    const [zoom, setZoom] = useState(1); // Zoom level [0.1, 10]
     const [clickPositions, setClickPositions] = useState([]);
+    const vGridRef = useRef();
 
     const [tokens, setTokens] = useState<TokenType[]>([]); // State for tokens
+    const [draggingToken, setDraggingToken] = useState<{ id: number, offsetX: number, offsetY: number } | null>(null);
+    const [draggingVisualizer, setDraggingVisualizer] = useState<{ 
+        originX: number, 
+        originY: number, 
+        currentX: number, 
+        currentY: number, 
+        distance: number 
+    } | null>(null);
 
 
     const handleScreenClick = (event: MouseEvent) => {
@@ -35,14 +49,6 @@ const Grid: React.FC = () => {
 
 
 
-    // zoom related
-    const zoomIn = () => {
-        setZoom(zoom + 0.1);
-    }
-
-    const zoomOut = () => {
-        setZoom(zoom - 0.1);
-    }
 
     // Initial color palette
     const initialPalette = ['#0D0D0D', '#4D4D4D', '#B3B3B3', '#5C4033', '#8B1A1A', '#D0F0C0',
@@ -63,23 +69,20 @@ const Grid: React.FC = () => {
     // Function to add a new token
     const addToken = useCallback((x: number, y: number, token: TokenType) => {
         setTokens([...tokens, { ...token, x, y, id: tokens.length }]);
-        console.log(tokens);
     }, [tokens]);
 
-    // Drag and Drop handlers
-    const onDragStart = (event, id) => {
-        // Set data and indicate what is being dragged
-        event.dataTransfer.setData("token-id", id);
-    };
 
-    const onDragOver = (event) => {
-        event.preventDefault(); // Necessary to allow dropping
-    };
+    const moveToken = useCallback((id: number, x: number, y: number) => {
+        setTokens(prevTokens => {
+            const newTokens = [...prevTokens];
+            const tokenIndex = newTokens.findIndex(token => token.id === id);
+            if (tokenIndex !== -1) {
+                newTokens[tokenIndex] = { ...newTokens[tokenIndex], x, y };
+            }
+            return newTokens;
+        });
+    }, []);
 
-    const onDrop = (event, rowIndex, colIndex) => {
-        const id = event.dataTransfer.getData("token-id");
-        moveToken(id, colIndex, rowIndex);
-    };
 
     // Rendering tokens
     const renderedTokens = tokens.map(token => 
@@ -90,17 +93,19 @@ const Grid: React.FC = () => {
                      token={token}
                      style={{
                           position: 'absolute',
-                          left: `${token.y * cellSize * zoom - cellSize/2}px`,
-                            top: `${token.x * cellSize * zoom - cellSize/2}px`,
-                          width: `${cellSize * zoom}px`,
-                          height: `${cellSize * zoom}px`,
+                          left: `${token.y * cellSize - cellSize/2}px`,
+                            top: `${token.x * cellSize - cellSize/2}px`,
+                          width: `${cellSize}px`,
+                          height: `${cellSize}px`,
                             zIndex: 1,
                             cursor: 'grab',
                             border: '1px solid #000',
                             borderRadius: '50%',
+                            //transform: `translate(${draggingToken && draggingToken.id === token.id ? event.clientX - draggingToken.offsetX : 0}px, ${draggingToken && draggingToken.id === token.id ? event.clientY - draggingToken.offsetY : 0}px)`,
                      }}
                      onClick={() => console.log('clicked')}
-                     onDragStart={(event) => onDragStart(event, token.id)}
+
+                    
                 />
               );
 
@@ -139,6 +144,7 @@ const Grid: React.FC = () => {
 
     const handleCellClick = (rowIndex: number, colIndex: number) => {
         if (tool === 'paintbrush') {
+            console.log('painting: ', rowIndex, colIndex);
             paintCell(rowIndex, colIndex, selectedColor);
         }
         else if (tool === 'pan') {
@@ -163,7 +169,10 @@ const Grid: React.FC = () => {
         paintCell(rowIndex, colIndex, initialColor);
     };
     const handleMouseEnterPainting = (rowIndex: number, colIndex: number) => {
-        if (painting) paintCell(rowIndex, colIndex, selectedColor);
+        if (painting) {
+            console.log('painting: ', rowIndex, colIndex);
+            paintCell(rowIndex, colIndex, selectedColor);
+        }
     };
     const handleMouseDownPainting = () => setPainting(true);
     const handleMouseUpPainting = () => setPainting(false);
@@ -202,10 +211,25 @@ const Grid: React.FC = () => {
         }
     };
 
+    const Controls = () => {
+        const { zoomIn, zoomOut, resetTransform } = useControls();
+        return (
+          <>
+            <button onClick={() => zoomIn()}>Zoom In</button>
+            <button onClick={() => zoomOut()}>Zoom Out</button>
+            <button onClick={() => resetTransform()}>Reset</button>
+          </>
+        );
+      };
+
 
     
     // Adjust the grid size on window resize
     useEffect(() => {
+        if (VGrid.current) {
+            VGrid.current.resetAfterIndices({ columnIndex: 0, rowIndex: 0 });
+        }
+
         const adjustGridSize = () => {
             const screenWidth = window.innerWidth;
             const screenHeight = window.innerHeight;
@@ -214,6 +238,14 @@ const Grid: React.FC = () => {
             const newHeight = Math.ceil(screenHeight / cellSize);
             setGridSize(Math.max(newWidth, newHeight));
         };
+
+        const handleMouseMove = (event: MouseEvent) => {
+            //console.log(event.clientX, event.clientY);
+            
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+
+
 
         window.addEventListener('resize', adjustGridSize);
         adjustGridSize();
@@ -237,19 +269,19 @@ const Grid: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('resize', adjustGridSize);
+            window.removeEventListener('mousemove', handleMouseMove);
         }
-    }, []);
+    }, [cellSize, draggingToken, draggingVisualizer, tokens]);
 
     // Rendering the grid
     return (
-        <div>
+        <DndProvider backend={HTML5Backend}>
+
             {/* Toolbar */}
             <div className="toolbar" style={{ position: 'absolute', bottom: '10px', left: '10px' }}>
                 <button onClick={() => setTool('paintbrush')}>Paintbrush</button>
                 <button onClick={() => setTool('pan')}>Pan</button>
                 <button onClick={() => setTool('token')}>Token</button>
-                <button onClick={() => zoomIn()}>+</button>
-                <button onClick={() => zoomOut()}>-</button>
                 <input type="color" value={selectedColor} onChange={(e) => handleColorChange(e.target.value)} />
                 {colorPalette.map((color, index) => (
                     <button key={index} style={{ backgroundColor: color }} onClick={() => handlePaletteColorClick(index)} />
@@ -268,7 +300,12 @@ const Grid: React.FC = () => {
                     height: '100vh',
                  }}
             >
-               <div 
+                 <TransformWrapper
+                 disabled={tool === 'pan' ? false : true}
+                 >
+                    <Controls />
+                    <TransformComponent>
+                    <div 
                className="grid" 
                ref={gridRef}>
                 <div
@@ -281,64 +318,70 @@ const Grid: React.FC = () => {
                     height: 'fit-content',
                 }}
             >
-                
-                
-    {grid.map((row, rowIndex) => (
-        <div key={rowIndex} className="grid-row">
-            {row.map((cell, colIndex) => (
-                <div
-                    key={colIndex}
-                    className="grid-cell"
-                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                    onContextMenu={(e) => handleCellRightClick(e, rowIndex, colIndex)}
-                    onMouseEnter={() => handleMouseEnterPainting(rowIndex, colIndex)}
-                    style={{
-                        position: 'relative', // Set position relative for absolute positioning of the dot
-                        backgroundColor: cell.color,
-                        width: `${cellSize * zoom}px`,
-                        height: `${cellSize * zoom}px`,
-                        border: displayBorders ? '0.5px solid #ccc' : 'none'
-                    }}
-                >
-                    <div
-                    className="dot-container"
-                    onClick={() => handleDotClick(rowIndex, colIndex, selectedColor)}
-                    style={{
-                        position: 'absolute',
-                        top: `-${15 * zoom}px`, // Half of 30px
-                        left: `-${15 * zoom}px`, // Half of 30px
-                        width: `${30 * zoom}px`,
-                        height: `${30 * zoom}px`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                    }}
-                >
-                     <div
-                        className="dot"
-                        style={{
-                            width: `${2 * zoom}px`,
-                            height: `${2 * zoom}px`,
-                            backgroundColor: '#000',
-                            borderRadius: '50%',
-                        }}
-                    />
-                    </div>
+               
 
+              <VGrid
+                    className="virtual-grid"
+                    columnCount={gridSize}
+                    columnWidth={() => cellSize}
+                    height={gridSize * cellSize}
+                    rowCount={gridSize}
+                    rowHeight={() => cellSize}
+                    width={gridSize * cellSize}
+                    style={{
+                        outline: 'none',
+                    }}
+                    ref={vGridRef}
+                >
+                    {
+                        ({ columnIndex, rowIndex, style }) => {
+                            const cell = grid[rowIndex][columnIndex];
+                            return (
+                                <motion.div
+                                    className="grid-cell"
+                                    onClick={() => handleCellClick(rowIndex, columnIndex)}
+                                    onContextMenu={(e) => handleCellRightClick(e, rowIndex, columnIndex)}
+                                    onMouseEnter={() => handleMouseEnterPainting(rowIndex, columnIndex)}
+                                    // make the tile big when hovered
+                                    whileHover={
+                                        tool === 'paintbrush' ? {
+                                            backgroundColor: '#fff',
+                                            transition: { duration: 0.1 },
+                                        } : {}
+                                     }
+                                    style={{
+                                        ...style,
+                                        backgroundColor: cell.color,
+                                        border: displayBorders ? '0.5px solid #ccc' : 'none'
+                                    }}
+                                >
+                                    <Dot
+                                        rowIndex={rowIndex}
+                                        colIndex={columnIndex}
+                                        handleDotClick={handleDotClick}
+                                        selectedColor={selectedColor}
+                                        moveToken={moveToken}
+                                        tool={tool}
+                                    />
+                                </motion.div>
+                            );
+                        }
+                    }
                     
-                </div>
-            ))}
-            
-        </div>
-    ))}
+                </VGrid>
+     
+
     {/* Tokens */}
     {renderedTokens}
+    
     </div>
 </div>
+                    </TransformComponent>
+                </TransformWrapper>
+
 
             </div>
-        </div>
+        </DndProvider>
     );
 };
 
