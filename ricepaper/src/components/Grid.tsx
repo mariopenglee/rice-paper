@@ -5,7 +5,7 @@ import './Grid.css';
 import Toolbox from './Toolbox';
 import { VariableSizeGrid as VGrid } from 'react-window';
 import Token from './Token';
-import Dot from './Dot';
+import Cell from './Cell';
 import { Token as TokenType } from '../types';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -19,7 +19,7 @@ interface GridCell {
 
 
 const Grid: React.FC = () => {
-    const initialGridSize = 100; // Initial grid size
+    const initialGridSize = 50; // Initial grid size
     const cellSize = 30; // Assuming each cell
     const initialColor = '#FFF8DC'; // Default color: rice paper
     const [gridSize, setGridSize] = useState(initialGridSize);
@@ -58,11 +58,17 @@ const Grid: React.FC = () => {
 
 
     // Create an initial grid based on the grid size
-    const createInitialGrid = (): GridCell[][] => {
-        return Array.from({ length: gridSize }, () =>
-            Array.from({ length: gridSize }, () => ({ color: initialColor }))
-        );
+    const createInitialGrid = (): { [key: string]: GridCell } => {
+        const grid = {};
+        for (let row = 0; row < gridSize; row++) {
+            for (let col = 0; col < gridSize; col++) {
+                grid[`${row}-${col}`] = { color: initialColor };
+            }
+        }
+        return grid;
     };
+    
+    const [grid, setGrid] = useState<{ [key: string]: GridCell }>(createInitialGrid());
 
     
 
@@ -116,14 +122,7 @@ const Grid: React.FC = () => {
 
 
 
-    const [grid, setGrid] = useState<GridCell[][]>(createInitialGrid());
-
-    // Function to update a cell's color
-    const paintCell = useCallback((rowIndex: number, colIndex: number, color: string) => {
-        const newGrid = [...grid];
-        newGrid[rowIndex][colIndex].color = color;
-        setGrid(newGrid);
-    }, [grid]);
+   
 
     // Event handlers
     const handlePaletteColorClick = (index: number) => {
@@ -142,18 +141,6 @@ const Grid: React.FC = () => {
     };
 
 
-    const handleCellClick = (rowIndex: number, colIndex: number) => {
-        if (tool === 'paintbrush') {
-            console.log('painting: ', rowIndex, colIndex);
-            paintCell(rowIndex, colIndex, selectedColor);
-        }
-        else if (tool === 'pan') {
-            console.log('pan');
-        }
-        else if (tool === 'token') {
-            console.log('token');
-        }
-    }
 
     const handleDotClick = (rowIndex: number, colIndex: number, color: string) => {
         if (tool === 'token') {
@@ -164,46 +151,31 @@ const Grid: React.FC = () => {
         
     }
 
-    const handleCellRightClick = (event: React.MouseEvent, rowIndex: number, colIndex: number) => {
-        event.preventDefault();
-        paintCell(rowIndex, colIndex, initialColor);
-    };
-    const handleMouseEnterPainting = (rowIndex: number, colIndex: number) => {
-        if (painting) {
-            console.log('painting: ', rowIndex, colIndex);
-            paintCell(rowIndex, colIndex, selectedColor);
-        }
-    };
+    // Function to paint a cell
+    const paintCell = useCallback((rowIndex, columnIndex, newColor) => {
+        setGrid(prevGrid => {
+            const newGrid = { ...prevGrid };
+            newGrid[`${rowIndex}-${columnIndex}`].color = newColor;
+            return newGrid;
+        });
+    }, []);
+
+    // Function to handle mouse down on a cell
     const handleMouseDownPainting = () => setPainting(true);
     const handleMouseUpPainting = () => setPainting(false);
     const handleMouseDownPanning = (event: React.MouseEvent) => {
         if (tool === 'pan' && gridRef.current) {
             event.preventDefault(); // Prevent default action
-            const startX = event.clientX;
-            const startY = event.clientY;
-            let newPos = { x: startX, y: startY };
-
-            const handleMouseMovePanning = (moveEvent: MouseEvent) => {
-                const dx = moveEvent.clientX - newPos.x;
-                const dy = moveEvent.clientY - newPos.y;
-                newPos = { x: moveEvent.clientX, y: moveEvent.clientY };
-                if (gridRef.current) {
-                    gridRef.current.scrollLeft -= dx;
-                    gridRef.current.scrollTop -= dy;
-
-                }
-
-            };
+            gridRef.current.style.cursor = 'grabbing';
+            
 
             const handleMouseUpPanning = () => {
                 if (gridRef.current) {
-                    gridRef.current.removeEventListener('mousemove', handleMouseMovePanning);
                     gridRef.current.removeEventListener('mouseup', handleMouseUpPanning);
                 }
             }
 
             if (gridRef.current) {
-                gridRef.current.addEventListener('mousemove', handleMouseMovePanning);
                 gridRef.current.addEventListener('mouseup', handleMouseUpPanning);
             }
 
@@ -230,25 +202,8 @@ const Grid: React.FC = () => {
             VGrid.current.resetAfterIndices({ columnIndex: 0, rowIndex: 0 });
         }
 
-        const adjustGridSize = () => {
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-
-            const newWidth = Math.ceil(screenWidth / cellSize);
-            const newHeight = Math.ceil(screenHeight / cellSize);
-            setGridSize(Math.max(newWidth, newHeight));
-        };
-
-        const handleMouseMove = (event: MouseEvent) => {
-            //console.log(event.clientX, event.clientY);
-            
-        };
-        window.addEventListener('mousemove', handleMouseMove);
 
 
-
-        window.addEventListener('resize', adjustGridSize);
-        adjustGridSize();
 
         const handleKeyDown = (event: KeyboardEvent) => {
             switch (event.key) {
@@ -268,8 +223,6 @@ const Grid: React.FC = () => {
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('resize', adjustGridSize);
-            window.removeEventListener('mousemove', handleMouseMove);
         }
     }, [cellSize, draggingToken, draggingVisualizer, tokens]);
 
@@ -335,35 +288,22 @@ const Grid: React.FC = () => {
                 >
                     {
                         ({ columnIndex, rowIndex, style }) => {
-                            const cell = grid[rowIndex][columnIndex];
+                            const cellKey = `${rowIndex}-${columnIndex}`;
+                            const cell = grid[cellKey];
                             return (
-                                <motion.div
-                                    className="grid-cell"
-                                    onClick={() => handleCellClick(rowIndex, columnIndex)}
-                                    onContextMenu={(e) => handleCellRightClick(e, rowIndex, columnIndex)}
-                                    onMouseEnter={() => handleMouseEnterPainting(rowIndex, columnIndex)}
-                                    // make the tile big when hovered
-                                    whileHover={
-                                        tool === 'paintbrush' ? {
-                                            backgroundColor: '#fff',
-                                            transition: { duration: 0.1 },
-                                        } : {}
-                                     }
-                                    style={{
-                                        ...style,
-                                        backgroundColor: cell.color,
-                                        border: displayBorders ? '0.5px solid #ccc' : 'none'
-                                    }}
-                                >
-                                    <Dot
-                                        rowIndex={rowIndex}
-                                        colIndex={columnIndex}
-                                        handleDotClick={handleDotClick}
-                                        selectedColor={selectedColor}
-                                        moveToken={moveToken}
-                                        tool={tool}
-                                    />
-                                </motion.div>
+                                <Cell
+                                    key={cellKey}
+                                    rowIndex={rowIndex}
+                                    columnIndex={columnIndex}
+                                    cell={cell}
+                                    style={style}
+                                    displayBorders={displayBorders}
+                                    handleDotClick={handleDotClick}
+                                    selectedColor={selectedColor}
+                                    moveToken={moveToken}
+                                    tool={tool}
+                                    paintCell={paintCell}
+                                />
                             );
                         }
                     }

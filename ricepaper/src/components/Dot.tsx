@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, {memo} from "react";
 import { motion } from "framer-motion";
 import { useDrop } from "react-dnd";
 
@@ -12,7 +12,7 @@ interface DotProps {
     tool: string;
 }
 
-const Dot = ({rowIndex, colIndex, handleDotClick, selectedColor, moveToken, tool}: DotProps) => {
+const Dot = memo(({rowIndex, colIndex, handleDotClick, selectedColor, moveToken, tool}: DotProps) => {
     const [{ isOver }, drop] = useDrop(() => ({
         accept: 'token',
         drop: (item: any) => {
@@ -44,7 +44,8 @@ const Dot = ({rowIndex, colIndex, handleDotClick, selectedColor, moveToken, tool
             cursor: 'pointer',
             
         }}
-        whileHover={{ scale: 1.5 }}
+        whileHover={{ 
+            scale: 1.5 }}
         
     >
          <motion.div
@@ -59,7 +60,7 @@ const Dot = ({rowIndex, colIndex, handleDotClick, selectedColor, moveToken, tool
         />
         </motion.div>
     );
-    }
+    })
 
 
 export default Dot;

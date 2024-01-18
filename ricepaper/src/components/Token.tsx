@@ -21,7 +21,7 @@ const Token: React.FC<TokenProps> = ({ token, style, onClick }) => {
   });
 
   return (
-    <div 
+    <motion.div 
     className={`token ${isDragging ? 'dragging' : ''}`}
     style={{ ...style, 
       background: token.color,
@@ -29,8 +29,9 @@ const Token: React.FC<TokenProps> = ({ token, style, onClick }) => {
      }} 
     onClick={onClick}
     ref={drag}
+    layoutId={`token-${token.id}`}
 
-    ></div>
+    ></motion.div>
   );
 };
 
