@@ -6,20 +6,18 @@ import Toolbox from './Toolbox';
 import { VariableSizeGrid as VGrid } from 'react-window';
 import Token from './Token';
 import Cell from './Cell';
+import Dot from './Dot';
 import { Token as TokenType } from '../types';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useDrop } from 'react-dnd';
 import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
 import { motion } from 'framer-motion';
 interface GridCell {
     color: string;
-    tokens?: TokenType[];
 }
 
 
+
 const Grid: React.FC = () => {
-    const initialGridSize = 50; // Initial grid size
+    const initialGridSize = 100; // Initial grid size
     const cellSize = 30; // Assuming each cell
     const initialColor = '#FFF8DC'; // Default color: rice paper
     const [gridSize, setGridSize] = useState(initialGridSize);
@@ -30,6 +28,9 @@ const Grid: React.FC = () => {
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
     const [clickPositions, setClickPositions] = useState([]);
     const vGridRef = useRef();
+
+    
+
 
     const [tokens, setTokens] = useState<TokenType[]>([]); // State for tokens
     const [draggingToken, setDraggingToken] = useState<{ id: number, offsetX: number, offsetY: number } | null>(null);
@@ -42,11 +43,12 @@ const Grid: React.FC = () => {
     } | null>(null);
 
 
-    const handleScreenClick = (event: MouseEvent) => {
-        const newClickPosition = { x: event.clientX, y: event.clientY };
-        setClickPositions([...clickPositions, newClickPosition]);
-    }
 
+
+    // layer handling
+    const numberOfLayers = 5;
+    const [layers, setLayers] = useState<{ [key: string]: GridCell }[]>([]);
+    const [selectedLayer, setSelectedLayer] = useState<number>(0);
 
 
 
@@ -55,20 +57,7 @@ const Grid: React.FC = () => {
         '#789EC6', '#FFF8DC', '#7D7D7D', '#1A2421']
     const [colorPalette, setColorPalette] = useState<string[]>(initialPalette);
     const [selectedPaletteIndex, setSelectedPaletteIndex] = useState<number | null>(null);
-
-
-    // Create an initial grid based on the grid size
-    const createInitialGrid = (): { [key: string]: GridCell } => {
-        const grid = {};
-        for (let row = 0; row < gridSize; row++) {
-            for (let col = 0; col < gridSize; col++) {
-                grid[`${row}-${col}`] = { color: initialColor };
-            }
-        }
-        return grid;
-    };
-    
-    const [grid, setGrid] = useState<{ [key: string]: GridCell }>(createInitialGrid());
+    const [grid, setGrid] = useState({}); // Grid state
 
     
 
@@ -79,6 +68,7 @@ const Grid: React.FC = () => {
 
 
     const moveToken = useCallback((id: number, x: number, y: number) => {
+        console.log('move token', id, x, y);
         setTokens(prevTokens => {
             const newTokens = [...prevTokens];
             const tokenIndex = newTokens.findIndex(token => token.id === id);
@@ -88,6 +78,21 @@ const Grid: React.FC = () => {
             return newTokens;
         });
     }, []);
+
+    const dotSize = 4; // Size of the dots
+    const dots = [];
+    for (let i = 0; i <= gridSize; i++) {
+        for (let j = 0; j <= gridSize; j++) {
+            dots.push(
+                <Dot 
+                    key={`${i}-${j}`}
+                    x={i * cellSize - dotSize / 2}
+                    y={j * cellSize - dotSize / 2}
+                    size={dotSize}
+                />
+            );
+        }
+    }
 
 
     // Rendering tokens
@@ -119,10 +124,49 @@ const Grid: React.FC = () => {
     );
 
 
+    const getCellFromCursorPosition = (x, y) => {
+        const gridX = Math.floor(x / cellSize);
+        const gridY = Math.floor(y / cellSize);
+        return { gridX, gridY };
+    };
+
+    const getDotFromCursorPosition = (x, y) => {
+        // get the dot closest to the cursor
+        const DotX = Math.round(x / cellSize);
+        const DotY = Math.round(y / cellSize);
+        return { DotX, DotY };
+    };
+
+
+
+    // Generate grid cells for rendering
+    const cells = Object.entries(grid).map(([key, value]) => {
+        const [gridX, gridY] = key.split('-').map(Number);
+        return (
+            <Cell
+                key={key}
+                x={gridX * cellSize}
+                y={gridY * cellSize}
+                size={cellSize}
+                color={value.color}
+            />
+        );
+    });
+
+    
+
+
 
 
 
    
+    // Function to update a cell's color
+    const paintCell = useCallback((rowIndex: number, colIndex: number, color: string) => {
+        setGrid(prevGrid => ({
+            ...prevGrid,
+            [`${rowIndex}-${colIndex}`]: { ...prevGrid[`${rowIndex}-${colIndex}`], color: color }
+        }));
+    }, []);
 
     // Event handlers
     const handlePaletteColorClick = (index: number) => {
@@ -141,28 +185,60 @@ const Grid: React.FC = () => {
     };
 
 
+ 
 
-    const handleDotClick = (rowIndex: number, colIndex: number, color: string) => {
-        if (tool === 'token') {
-            console.log('dot');
-            console.log(rowIndex, colIndex);
-            addToken(rowIndex, colIndex, { color });
+    const handleMouseMove = (event: React.MouseEvent) => {
+        const { clientX, clientY } = event;
+        const mouseX = clientX + gridRef.current.scrollLeft;
+        const mouseY = clientY + gridRef.current.scrollTop;
+        if (tool === 'paintbrush' && painting) {
+            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const cellKey = `${gridX}-${gridY}`;
+            if (painting && (!grid[cellKey] || grid[cellKey].color !== selectedColor)) {
+                setGrid(prevGrid => ({
+                    ...prevGrid,
+                    [cellKey]: { color: selectedColor }
+                }));
+            }
         }
-        
+    };
+    const handleMouseUp = () => {
+        if (painting === true) {
+        setPainting(false);
+        }
     }
 
-    // Function to paint a cell
-    const paintCell = useCallback((rowIndex, columnIndex, newColor) => {
-        setGrid(prevGrid => {
-            const newGrid = { ...prevGrid };
-            newGrid[`${rowIndex}-${columnIndex}`].color = newColor;
-            return newGrid;
-        });
-    }, []);
+    const handleMouseDown = (event) => {
+        const { clientX, clientY } = event;
+        console.log(clientX, clientY);
+        // update click positions depending on how much we've scrolled
+        const mouseX = clientX + gridRef.current.scrollLeft;
+        const mouseY = clientY + gridRef.current.scrollTop;
+        console.log(mouseX, mouseY);
+        if (tool === 'paintbrush') {
+        const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+        console.log("cell", gridX, gridY);
+        const cellKey = `${gridX}-${gridY}`;
 
-    // Function to handle mouse down on a cell
-    const handleMouseDownPainting = () => setPainting(true);
-    const handleMouseUpPainting = () => setPainting(false);
+        setGrid(prevGrid => ({
+            ...prevGrid,
+            [cellKey]: { color: selectedColor }
+        }));
+        setPainting(true);
+        }
+        else if (tool === 'token') {
+            const { DotX, DotY } = getDotFromCursorPosition(mouseX, mouseY);
+            console.log("dot", DotX, DotY);
+            addToken(DotY, DotX,  { color: selectedColor });
+        }
+        else if (tool === 'pan') {
+        }
+        
+        
+        
+        
+        
+    };
     const handleMouseDownPanning = (event: React.MouseEvent) => {
         if (tool === 'pan' && gridRef.current) {
             event.preventDefault(); // Prevent default action
@@ -186,11 +262,11 @@ const Grid: React.FC = () => {
     const Controls = () => {
         const { zoomIn, zoomOut, resetTransform } = useControls();
         return (
-          <>
+            <div className="controls">
             <button onClick={() => zoomIn()}>Zoom In</button>
             <button onClick={() => zoomOut()}>Zoom Out</button>
             <button onClick={() => resetTransform()}>Reset</button>
-          </>
+          </div>
         );
       };
 
@@ -228,10 +304,10 @@ const Grid: React.FC = () => {
 
     // Rendering the grid
     return (
-        <DndProvider backend={HTML5Backend}>
+        <>
 
             {/* Toolbar */}
-            <div className="toolbar" style={{ position: 'absolute', bottom: '10px', left: '10px' }}>
+            <div className="toolbar">
                 <button onClick={() => setTool('paintbrush')}>Paintbrush</button>
                 <button onClick={() => setTool('pan')}>Pan</button>
                 <button onClick={() => setTool('token')}>Token</button>
@@ -246,11 +322,14 @@ const Grid: React.FC = () => {
 
             {/* Grid */}
             <div
-                onMouseDown={tool === 'paintbrush' ? handleMouseDownPainting : tool === 'pan' ? handleMouseDownPanning : undefined}
-                onMouseUp={tool === 'paintbrush' ? handleMouseUpPainting : undefined}
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
                 style={{ 
                     width: '100%', 
-                    height: '100vh',
+                    height: '100%',
+                    backgroundColor: `${initialColor}`,
+                    zIndex: -10,
                  }}
             >
                  <TransformWrapper
@@ -271,44 +350,10 @@ const Grid: React.FC = () => {
                     height: 'fit-content',
                 }}
             >
-               
-
-              <VGrid
-                    className="virtual-grid"
-                    columnCount={gridSize}
-                    columnWidth={() => cellSize}
-                    height={gridSize * cellSize}
-                    rowCount={gridSize}
-                    rowHeight={() => cellSize}
-                    width={gridSize * cellSize}
-                    style={{
-                        outline: 'none',
-                    }}
-                    ref={vGridRef}
-                >
-                    {
-                        ({ columnIndex, rowIndex, style }) => {
-                            const cellKey = `${rowIndex}-${columnIndex}`;
-                            const cell = grid[cellKey];
-                            return (
-                                <Cell
-                                    key={cellKey}
-                                    rowIndex={rowIndex}
-                                    columnIndex={columnIndex}
-                                    cell={cell}
-                                    style={style}
-                                    displayBorders={displayBorders}
-                                    handleDotClick={handleDotClick}
-                                    selectedColor={selectedColor}
-                                    moveToken={moveToken}
-                                    tool={tool}
-                                    paintCell={paintCell}
-                                />
-                            );
-                        }
-                    }
-                    
-                </VGrid>
+                {cells}
+                {dots}
+                
+             
      
 
     {/* Tokens */}
@@ -321,7 +366,7 @@ const Grid: React.FC = () => {
 
 
             </div>
-        </DndProvider>
+        </>
     );
 };
 

@@ -3,7 +3,6 @@
 import React from 'react';
 import { Token as TokenType } from '../types';
 import { motion } from 'framer-motion';
-import { useDrag } from 'react-dnd';
 
 interface TokenProps {
   token: TokenType;
@@ -12,23 +11,15 @@ interface TokenProps {
 }
 
 const Token: React.FC<TokenProps> = ({ token, style, onClick }) => {
-  const [{ isDragging }, drag] = useDrag({
-    type: 'token',
-    item: { token },
-    collect: monitor => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  });
 
   return (
     <motion.div 
-    className={`token ${isDragging ? 'dragging' : ''}`}
+    className={`token token-${token.id}`}
     style={{ ...style, 
       background: token.color,
-      opacity: isDragging ? 0.5 : 1,
+      zIndex: 100,
      }} 
     onClick={onClick}
-    ref={drag}
     layoutId={`token-${token.id}`}
 
     ></motion.div>

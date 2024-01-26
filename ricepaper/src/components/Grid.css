@@ -60,3 +60,22 @@
     .dot-highlighted {
         transform: scale(1.5); /* Enlarge the dot for highlighting */
     }
+
+  .cell {
+    position: absolute;
+  }
+
+  .toolbar {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+  }
+
+  .controls {
+    position: absolute;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    z-index: 2; /* Ensure it's above other elements */
+    
+  }
