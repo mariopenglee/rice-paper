@@ -1,5 +1,5 @@
 
-const Cell = ({ x, y, size, color, displayBorders, onMouseEnter }) => {
+const Cell = ({ x, y, size, color, opacity }) => {
     
     const style = {
         left: x,
@@ -7,13 +7,13 @@ const Cell = ({ x, y, size, color, displayBorders, onMouseEnter }) => {
         width: size,
         height: size,
         backgroundColor: color,
+        opacity: opacity,
     };
 
     return (
     <div 
     className="cell" 
     style={style}
-    onMouseEnter={onMouseEnter}
     >
     </div>
     );

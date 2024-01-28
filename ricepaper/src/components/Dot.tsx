@@ -9,7 +9,7 @@ const Dot = ({ x, y, size }) => {
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: '50%',
-        backgroundColor: 'black' // or any color you prefer
+        backgroundColor: 'gray'
     };
 
     return <div 

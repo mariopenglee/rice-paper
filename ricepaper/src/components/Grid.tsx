@@ -2,17 +2,22 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './Grid.css';
-import Toolbox from './Toolbox';
 import { VariableSizeGrid as VGrid } from 'react-window';
 import Token from './Token';
 import Cell from './Cell';
 import Dot from './Dot';
 import { Token as TokenType } from '../types';
 import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
-import { motion } from 'framer-motion';
 interface GridCell {
     color: string;
 }
+
+interface LayerData {
+    cells: { [key: string]: GridCell };
+    opacity: number;
+}
+
+
 
 
 
@@ -26,29 +31,45 @@ const Grid: React.FC = () => {
     const [tool, setTool] = useState('paintbrush'); // 'paintbrush' or 'pan'
     const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
-    const [clickPositions, setClickPositions] = useState([]);
-    const vGridRef = useRef();
 
+    const [layers, setLayers] = useState<Array<LayerData>>([{ cells: {}, opacity: 1 }]);
+    const [selectedLayer, setSelectedLayer] = useState<number>(0);
+    const [layerVisibility, setLayerVisibility] = useState<boolean[]>([true]);
+
+    const addLayer = () => {
+        setLayers([...layers, { cells: {}, opacity: 1 }]);
+        setLayerVisibility([...layerVisibility, true]);
+    };
+
+    const updateLayerOpacity = (index: number, newOpacity: number) => {
+        const updatedLayers = [...layers];
+        updatedLayers[index].opacity = newOpacity;
+        setLayers(updatedLayers);
+    };
+
+    
+    const removeLayer = (index: number) => {
+        const newLayers = layers.filter((_, i) => i !== index);
+        const newVisibility = layerVisibility.filter((_, i) => i !== index);
+        setLayers(newLayers);
+        setLayerVisibility(newVisibility);
+    };
+    
+    const selectLayer = (index: number) => {
+        setSelectedLayer(index);
+    };
+    
+    const toggleLayerVisibility = (index: number) => {
+        const newVisibility = [...layerVisibility];
+        newVisibility[index] = !newVisibility[index];
+        setLayerVisibility(newVisibility);
+    };
+    
     
 
 
     const [tokens, setTokens] = useState<TokenType[]>([]); // State for tokens
-    const [draggingToken, setDraggingToken] = useState<{ id: number, offsetX: number, offsetY: number } | null>(null);
-    const [draggingVisualizer, setDraggingVisualizer] = useState<{ 
-        originX: number, 
-        originY: number, 
-        currentX: number, 
-        currentY: number, 
-        distance: number 
-    } | null>(null);
 
-
-
-
-    // layer handling
-    const numberOfLayers = 5;
-    const [layers, setLayers] = useState<{ [key: string]: GridCell }[]>([]);
-    const [selectedLayer, setSelectedLayer] = useState<number>(0);
 
 
 
@@ -57,29 +78,15 @@ const Grid: React.FC = () => {
         '#789EC6', '#FFF8DC', '#7D7D7D', '#1A2421']
     const [colorPalette, setColorPalette] = useState<string[]>(initialPalette);
     const [selectedPaletteIndex, setSelectedPaletteIndex] = useState<number | null>(null);
-    const [grid, setGrid] = useState({}); // Grid state
 
-    
 
     // Function to add a new token
     const addToken = useCallback((x: number, y: number, token: TokenType) => {
-        setTokens([...tokens, { ...token, x, y, id: tokens.length }]);
+        setTokens([...tokens, { ...token, x, y}]);
     }, [tokens]);
 
 
-    const moveToken = useCallback((id: number, x: number, y: number) => {
-        console.log('move token', id, x, y);
-        setTokens(prevTokens => {
-            const newTokens = [...prevTokens];
-            const tokenIndex = newTokens.findIndex(token => token.id === id);
-            if (tokenIndex !== -1) {
-                newTokens[tokenIndex] = { ...newTokens[tokenIndex], x, y };
-            }
-            return newTokens;
-        });
-    }, []);
-
-    const dotSize = 4; // Size of the dots
+    const dotSize = 2; // Size of the dots
     const dots = [];
     for (let i = 0; i <= gridSize; i++) {
         for (let j = 0; j <= gridSize; j++) {
@@ -98,6 +105,7 @@ const Grid: React.FC = () => {
     // Rendering tokens
     const renderedTokens = tokens.map(token => 
        {
+        if (!layerVisibility[token.layer]) return null; // Don't render if layer is not visible
               return (
                 <Token
                      key={token.id}
@@ -112,7 +120,7 @@ const Grid: React.FC = () => {
                             cursor: 'grab',
                             border: '1px solid #000',
                             borderRadius: '50%',
-                            //transform: `translate(${draggingToken && draggingToken.id === token.id ? event.clientX - draggingToken.offsetX : 0}px, ${draggingToken && draggingToken.id === token.id ? event.clientY - draggingToken.offsetY : 0}px)`,
+                            opacity: layers[token.layer].opacity,
                      }}
                      onClick={() => console.log('clicked')}
 
@@ -137,21 +145,25 @@ const Grid: React.FC = () => {
         return { DotX, DotY };
     };
 
+    const renderedLayers = layers.map((layer, index) => {
+        if (!layerVisibility[index]) return null;
+    
+        return Object.entries(layer.cells).map(([key, value]) => {
+            const [gridX, gridY] = key.split('-').map(Number);
+            return (
+                <Cell
+                    key={key}
+                    x={gridX * cellSize}
+                    y={gridY * cellSize}
+                    size={cellSize}
+                    color={value.color}
+                    opacity={layer.opacity}
 
-
-    // Generate grid cells for rendering
-    const cells = Object.entries(grid).map(([key, value]) => {
-        const [gridX, gridY] = key.split('-').map(Number);
-        return (
-            <Cell
-                key={key}
-                x={gridX * cellSize}
-                y={gridY * cellSize}
-                size={cellSize}
-                color={value.color}
-            />
-        );
+                />
+            );
+        });
     });
+    
 
     
 
@@ -159,14 +171,6 @@ const Grid: React.FC = () => {
 
 
 
-   
-    // Function to update a cell's color
-    const paintCell = useCallback((rowIndex: number, colIndex: number, color: string) => {
-        setGrid(prevGrid => ({
-            ...prevGrid,
-            [`${rowIndex}-${colIndex}`]: { ...prevGrid[`${rowIndex}-${colIndex}`], color: color }
-        }));
-    }, []);
 
     // Event handlers
     const handlePaletteColorClick = (index: number) => {
@@ -184,6 +188,14 @@ const Grid: React.FC = () => {
         }
     };
 
+    const paintCell = (gridX: number, gridY: number) => {
+        // Paint the cell at the given coordinates on the selected layer
+        const cellKey = `${gridX}-${gridY}`;
+        const updatedLayers = [...layers];
+        updatedLayers[selectedLayer].cells[cellKey] = { color: selectedColor };
+        setLayers(updatedLayers);
+    }
+
 
  
 
@@ -194,11 +206,8 @@ const Grid: React.FC = () => {
         if (tool === 'paintbrush' && painting) {
             const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
             const cellKey = `${gridX}-${gridY}`;
-            if (painting && (!grid[cellKey] || grid[cellKey].color !== selectedColor)) {
-                setGrid(prevGrid => ({
-                    ...prevGrid,
-                    [cellKey]: { color: selectedColor }
-                }));
+            if (painting && (!layers[selectedLayer].cells[cellKey] || layers[selectedLayer].cells[cellKey].color !== selectedColor)) {
+                paintCell(gridX, gridY);
             }
         }
     };
@@ -220,16 +229,19 @@ const Grid: React.FC = () => {
         console.log("cell", gridX, gridY);
         const cellKey = `${gridX}-${gridY}`;
 
-        setGrid(prevGrid => ({
-            ...prevGrid,
-            [cellKey]: { color: selectedColor }
-        }));
+        if (!layers[selectedLayer].cells[cellKey] || layers[selectedLayer].cells[cellKey].color !== selectedColor) {
+            paintCell(gridX, gridY);
+        }
         setPainting(true);
         }
         else if (tool === 'token') {
             const { DotX, DotY } = getDotFromCursorPosition(mouseX, mouseY);
             console.log("dot", DotX, DotY);
-            addToken(DotY, DotX,  { color: selectedColor });
+            addToken(DotY, DotX,  { 
+                id: tokens.length,
+                color: selectedColor,
+                layer: selectedLayer,
+             });
         }
         else if (tool === 'pan') {
         }
@@ -274,12 +286,7 @@ const Grid: React.FC = () => {
     
     // Adjust the grid size on window resize
     useEffect(() => {
-        if (VGrid.current) {
-            VGrid.current.resetAfterIndices({ columnIndex: 0, rowIndex: 0 });
-        }
-
-
-
+        
 
         const handleKeyDown = (event: KeyboardEvent) => {
             switch (event.key) {
@@ -300,7 +307,7 @@ const Grid: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         }
-    }, [cellSize, draggingToken, draggingVisualizer, tokens]);
+    }, [cellSize, tokens]);
 
     // Rendering the grid
     return (
@@ -316,6 +323,34 @@ const Grid: React.FC = () => {
                     <button key={index} style={{ backgroundColor: color }} onClick={() => handlePaletteColorClick(index)} />
                 ))}
                 <button onClick={() => setDisplayBorders(!displayBorders)}>Toggle Borders</button>
+            </div>
+
+            <div className="layers-bar">
+            <button onClick={addLayer}>Add Layer</button>
+                <div className='layers-button-container'>
+                    {layers.map((_, index) => (
+                        <div key={index}>
+                            <button 
+                                className={index === selectedLayer ? 'selected-layer-button' : 'layer-button'}
+                                onClick={() => selectLayer(index)}>Layer {index + 1}</button>
+                            <button 
+                                className={layerVisibility[index] ? 'visible-button' : 'hidden-button'}
+                                onClick={() => toggleLayerVisibility(index)}>
+                            </button>
+                            <button 
+                                className={'remove-button'}
+                            onClick={() => removeLayer(index)}>X</button>
+                            <input 
+                                type="range" 
+                                min={0} 
+                                max={1} 
+                                step={0.1} 
+                                value={layers[index].opacity}
+                                onChange={(e) => updateLayerOpacity(index, Number(e.target.value))}
+                            />
+                        </div>
+                    ))}
+                </div>
             </div>
 
 
@@ -350,7 +385,7 @@ const Grid: React.FC = () => {
                     height: 'fit-content',
                 }}
             >
-                {cells}
+                {renderedLayers}
                 {dots}
                 
              
