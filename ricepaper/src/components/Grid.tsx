@@ -2,12 +2,10 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './Grid.css';
-import { VariableSizeGrid as VGrid } from 'react-window';
 import Token from './Token';
 import Cell from './Cell';
 import Dot from './Dot';
 import { Token as TokenType } from '../types';
-import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
 interface GridCell {
     color: string;
 }
@@ -21,12 +19,15 @@ interface LayerData {
 
 
 
+
+
 const Grid: React.FC = () => {
     const initialGridSize = 100; // Initial grid size
     const cellSize = 30; // Assuming each cell
     const initialColor = '#FFF8DC'; // Default color: rice paper
     const [gridSize, setGridSize] = useState(initialGridSize);
     const [painting, setPainting] = useState(false);
+    const [erasing, setErasing] = useState(false);
     const [selectedColor, setSelectedColor] = useState<string>('#000000'); // Default painting color: Black
     const [tool, setTool] = useState('paintbrush'); // 'paintbrush' or 'pan'
     const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
@@ -36,6 +37,10 @@ const Grid: React.FC = () => {
     const [selectedLayer, setSelectedLayer] = useState<number>(0);
     const [layerVisibility, setLayerVisibility] = useState<boolean[]>([true]);
 
+    const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
+    const [rectanglePreview, setRectanglePreview] = useState({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
+
+    const [rectangleStart, setRectangleStart] = useState({ x: 0, y: 0 });
     const addLayer = () => {
         setLayers([...layers, { cells: {}, opacity: 1 }]);
         setLayerVisibility([...layerVisibility, true]);
@@ -46,6 +51,26 @@ const Grid: React.FC = () => {
         updatedLayers[index].opacity = newOpacity;
         setLayers(updatedLayers);
     };
+
+    const floodFill = (x, y, targetColor) => {
+        // Check if the cell is out of bounds or already the fill color
+        if ( x < 0 || x >= gridSize || y < 0 || y >= gridSize || layers[selectedLayer].cells[`${x}-${y}`]?.color === selectedColor) {
+            return;
+        }
+    
+        // Check if the cell is the target color
+        if (layers[selectedLayer].cells[`${x}-${y}`]?.color === targetColor) {
+            // Fill the cell
+            paintCell(x, y);
+    
+            // Recur for north, east, south, and west
+            floodFill(x-1, y, targetColor);
+            floodFill(x+1, y, targetColor);
+            floodFill(x, y-1, targetColor);
+            floodFill(x, y+1, targetColor);
+        }
+    };
+    
 
     
     const removeLayer = (index: number) => {
@@ -102,35 +127,6 @@ const Grid: React.FC = () => {
     }
 
 
-    // Rendering tokens
-    const renderedTokens = tokens.map(token => 
-       {
-        if (!layerVisibility[token.layer]) return null; // Don't render if layer is not visible
-              return (
-                <Token
-                     key={token.id}
-                     token={token}
-                     style={{
-                          position: 'absolute',
-                          left: `${token.y * cellSize - cellSize/2}px`,
-                            top: `${token.x * cellSize - cellSize/2}px`,
-                          width: `${cellSize}px`,
-                          height: `${cellSize}px`,
-                            zIndex: 1,
-                            cursor: 'grab',
-                            border: '1px solid #000',
-                            borderRadius: '50%',
-                            opacity: layers[token.layer].opacity,
-                     }}
-                     onClick={() => console.log('clicked')}
-
-                    
-                />
-              );
-
-       }
-    );
-
 
     const getCellFromCursorPosition = (x, y) => {
         const gridX = Math.floor(x / cellSize);
@@ -145,10 +141,11 @@ const Grid: React.FC = () => {
         return { DotX, DotY };
     };
 
-    const renderedLayers = layers.map((layer, index) => {
-        if (!layerVisibility[index]) return null;
-    
-        return Object.entries(layer.cells).map(([key, value]) => {
+    const renderedLayersAndTokens = layers.map((layer, layerIndex) => {
+        if (!layerVisibility[layerIndex]) return null;
+
+        // Render cells for the current layer
+        const renderedCells = Object.entries(layer.cells).map(([key, value]) => {
             const [gridX, gridY] = key.split('-').map(Number);
             return (
                 <Cell
@@ -158,12 +155,41 @@ const Grid: React.FC = () => {
                     size={cellSize}
                     color={value.color}
                     opacity={layer.opacity}
-
+                    zIndex={layerIndex}
                 />
             );
         });
+
+        // Render tokens for the current layer
+        const renderedTokensForLayer = tokens
+            .filter(token => token.layer === layerIndex) // Filter tokens by current layer
+            .map(token => (
+                <Token
+                    key={token.id}
+                    token={token}
+                    style={{
+                        position: 'absolute',
+                        left: `${token.y * cellSize - cellSize/2}px`,
+                        top: `${token.x * cellSize - cellSize/2}px`,
+                        width: `${cellSize}px`,
+                        height: `${cellSize}px`,
+                        zIndex: layerIndex, // Apply layerIndex as zIndex
+                        cursor: 'grab',
+                        border: '1px solid #000',
+                        borderRadius: '50%',
+                        opacity: layer.opacity,
+                    }}
+                    onClick={() => console.log('clicked')}
+                />
+            ));
+
+        return (
+            <React.Fragment key={layerIndex}>
+                {renderedCells}
+                {renderedTokensForLayer}
+            </React.Fragment>
+        );
     });
-    
 
     
 
@@ -196,6 +222,51 @@ const Grid: React.FC = () => {
         setLayers(updatedLayers);
     }
 
+    const eraseCell = (gridX: number, gridY: number) => {
+        // Erase the cell at the given coordinates on the selected layer
+        const cellKey = `${gridX}-${gridY}`;
+        const updatedLayers = [...layers];
+        delete updatedLayers[selectedLayer].cells[cellKey];
+        setLayers(updatedLayers);
+    }
+
+    const paintRectangle = (startX: number, startY: number, endX: number, endY: number) => {
+        // Paint a rectangle from the start coordinates to the end coordinates
+        const minX = Math.min(startX, endX);
+        const minY = Math.min(startY, endY);
+        const maxX = Math.max(startX, endX);
+        const maxY = Math.max(startY, endY);
+        for (let i = minX; i <= maxX; i++) {
+            for (let j = minY; j <= maxY; j++) {
+                paintCell(i, j);
+            }
+        }
+    }
+
+    const eraseRectangle = (startX: number, startY: number, endX: number, endY: number) => {
+        // Erase a rectangle from the start coordinates to the end coordinates
+        const minX = Math.min(startX, endX);
+        const minY = Math.min(startY, endY);
+        const maxX = Math.max(startX, endX);
+        const maxY = Math.max(startY, endY);
+        for (let i = minX; i <= maxX; i++) {
+            for (let j = minY; j <= maxY; j++) {
+                eraseCell(i, j);
+            }
+        }
+    }
+
+    const updateRectanglePreview = (startX: number, startY: number, endX: number, endY: number) => {
+        // Update the rectangle preview coordinates
+        setRectanglePreview({
+            startX: startX * cellSize,
+            startY: startY * cellSize,
+            endX: endX * cellSize,
+            endY: endY * cellSize,
+            show: true,
+        });
+    }
+
 
  
 
@@ -203,19 +274,83 @@ const Grid: React.FC = () => {
         const { clientX, clientY } = event;
         const mouseX = clientX + gridRef.current.scrollLeft;
         const mouseY = clientY + gridRef.current.scrollTop;
-        if (tool === 'paintbrush' && painting) {
+        if (isDrawingRectangle) {
+            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            updateRectanglePreview(rectangleStart.x, rectangleStart.y, gridX, gridY);
+
+        }
+        else if (tool === 'paintbrush' && painting) {
             const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
             const cellKey = `${gridX}-${gridY}`;
             if (painting && (!layers[selectedLayer].cells[cellKey] || layers[selectedLayer].cells[cellKey].color !== selectedColor)) {
                 paintCell(gridX, gridY);
             }
         }
-    };
-    const handleMouseUp = () => {
-        if (painting === true) {
-        setPainting(false);
+        else if (tool === 'erase' && isDrawingRectangle) {
+            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            updateRectanglePreview(rectangleStart.x, rectangleStart.y, gridX, gridY);
         }
+        else if (tool === 'erase' && erasing) {
+            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const cellKey = `${gridX}-${gridY}`;
+            if (erasing && layers[selectedLayer].cells[cellKey]) {
+                eraseCell(gridX, gridY);
+            }
+        }
+    };
+    const handleMouseUp = (event) => {
+
+        if (isDrawingRectangle) {
+            const { clientX, clientY } = event;
+            const mouseX = clientX + gridRef.current.scrollLeft;
+            const mouseY = clientY + gridRef.current.scrollTop;
+            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            setRectanglePreview({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
+            if (tool === 'paintbrush') {
+            paintRectangle(rectangleStart.x, rectangleStart.y, gridX, gridY);
+            setPainting(false);
+            }
+            else if (tool === 'erase') {
+            eraseRectangle(rectangleStart.x, rectangleStart.y, gridX, gridY);
+            setErasing(false);
+            }
+            setIsDrawingRectangle(false);
+
+        }
+        else if (erasing === true) {
+            setErasing(false);
+        }
+        else if (painting === true) {
+            setPainting(false);
+        }
+        
+       
     }
+
+    const renderRectanglePreview = () => {
+        if (!rectanglePreview.show) return null;
+        const { startX, startY, endX, endY } = rectanglePreview;
+        const minX = Math.min(startX, endX);
+        const minY = Math.min(startY, endY);
+        const width = Math.abs(startX - endX) + cellSize;
+        const height = Math.abs(startY - endY) + cellSize;
+        return (
+            <div
+                style={{
+                    position: 'absolute',
+                    top: minY,
+                    left: minX,
+                    width: width,
+                    height: height,
+                    border: '1px dashed #000',
+                    background: tool === 'paintbrush' ? selectedColor : 'transparent',
+                    opacity: 0.5,
+                    pointerEvents: 'none',
+                }}
+            />
+        );
+    };
+    
 
     const handleMouseDown = (event) => {
         const { clientX, clientY } = event;
@@ -227,10 +362,19 @@ const Grid: React.FC = () => {
         if (tool === 'paintbrush') {
         const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
         console.log("cell", gridX, gridY);
+
+        if (event.shiftKey) {
+            // start drawing a rectangle
+            setIsDrawingRectangle(true);
+            setRectangleStart({ x: gridX, y: gridY });
+            
+        }
+        else {
         const cellKey = `${gridX}-${gridY}`;
 
         if (!layers[selectedLayer].cells[cellKey] || layers[selectedLayer].cells[cellKey].color !== selectedColor) {
             paintCell(gridX, gridY);
+        }
         }
         setPainting(true);
         }
@@ -244,6 +388,27 @@ const Grid: React.FC = () => {
              });
         }
         else if (tool === 'pan') {
+        }
+        else if (tool === 'erase') {
+            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            console.log("cell", gridX, gridY);
+            if (event.shiftKey) {
+                // start drawing a rectangle
+                setIsDrawingRectangle(true);
+                setRectangleStart({ x: gridX, y: gridY });
+            }
+            else{
+            const cellKey = `${gridX}-${gridY}`;
+            if (layers[selectedLayer].cells[cellKey]) {
+                eraseCell(gridX, gridY);
+            }}
+            setErasing(true);
+        }
+        else if (tool === 'fill') {
+            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const cellKey = `${gridX}-${gridY}`;
+            const targetColor = layers[selectedLayer].cells[cellKey]?.color;
+            floodFill(gridX, gridY, targetColor);
         }
         
         
@@ -271,21 +436,10 @@ const Grid: React.FC = () => {
         }
     };
 
-    const Controls = () => {
-        const { zoomIn, zoomOut, resetTransform } = useControls();
-        return (
-            <div className="controls">
-            <button onClick={() => zoomIn()}>Zoom In</button>
-            <button onClick={() => zoomOut()}>Zoom Out</button>
-            <button onClick={() => resetTransform()}>Reset</button>
-          </div>
-        );
-      };
-
-
     
     // Adjust the grid size on window resize
     useEffect(() => {
+        
         
 
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -318,6 +472,8 @@ const Grid: React.FC = () => {
                 <button onClick={() => setTool('paintbrush')}>Paintbrush</button>
                 <button onClick={() => setTool('pan')}>Pan</button>
                 <button onClick={() => setTool('token')}>Token</button>
+                <button onClick={() => setTool('erase')}>Erase</button>
+                <button onClick={() => setTool('fill')}>Fill</button>
                 <input type="color" value={selectedColor} onChange={(e) => handleColorChange(e.target.value)} />
                 {colorPalette.map((color, index) => (
                     <button key={index} style={{ backgroundColor: color }} onClick={() => handlePaletteColorClick(index)} />
@@ -367,11 +523,8 @@ const Grid: React.FC = () => {
                     zIndex: -10,
                  }}
             >
-                 <TransformWrapper
-                 disabled={tool === 'pan' ? false : true}
-                 >
-                    <Controls />
-                    <TransformComponent>
+
+
                     <div 
                className="grid" 
                ref={gridRef}>
@@ -385,20 +538,13 @@ const Grid: React.FC = () => {
                     height: 'fit-content',
                 }}
             >
-                {renderedLayers}
+                {renderedLayersAndTokens}
                 {dots}
+                {renderRectanglePreview()}
                 
-             
-     
-
-    {/* Tokens */}
-    {renderedTokens}
-    
+       
     </div>
 </div>
-                    </TransformComponent>
-                </TransformWrapper>
-
 
             </div>
         </>

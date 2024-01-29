@@ -17,7 +17,6 @@ const Token: React.FC<TokenProps> = ({ token, style, onClick }) => {
     className={`token token-${token.id}`}
     style={{ ...style, 
       background: token.color,
-      zIndex: 100,
      }} 
     onClick={onClick}
     layoutId={`token-${token.id}`}

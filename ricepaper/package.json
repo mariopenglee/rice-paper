@@ -12,12 +12,8 @@
   "dependencies": {
     "framer-motion": "^10.18.0",
     "react": "^18.2.0",
-    "react-dnd": "^16.0.1",
-    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
     "react-redux": "^9.1.0",
-    "react-window": "^1.8.10",
-    "react-zoom-pan-pinch": "^3.3.0",
     "redux": "^5.0.1",
     "socket.io-client": "^4.7.4"
   },

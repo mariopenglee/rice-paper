@@ -1,5 +1,5 @@
 
-const Cell = ({ x, y, size, color, opacity }) => {
+const Cell = ({ x, y, size, color, opacity, zIndex }) => {
     
     const style = {
         left: x,
@@ -8,6 +8,7 @@ const Cell = ({ x, y, size, color, opacity }) => {
         height: size,
         backgroundColor: color,
         opacity: opacity,
+        zIndex: zIndex,
     };
 
     return (
