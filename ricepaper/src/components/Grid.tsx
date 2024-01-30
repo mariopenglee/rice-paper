@@ -11,6 +11,7 @@ interface GridCell {
 }
 
 interface LayerData {
+    name: string;
     cells: { [key: string]: GridCell };
     opacity: number;
 }
@@ -33,18 +34,16 @@ const Grid: React.FC = () => {
     const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
 
-    const [layers, setLayers] = useState<Array<LayerData>>([{ cells: {}, opacity: 1 }]);
+    const [layers, setLayers] = useState<Array<LayerData>>([{ name: 'Layer 1', cells: {}, opacity: 1 }]);
     const [selectedLayer, setSelectedLayer] = useState<number>(0);
+    const [renamingLayer, setRenamingLayer] = useState<number | null>(null);
     const [layerVisibility, setLayerVisibility] = useState<boolean[]>([true]);
 
     const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
     const [rectanglePreview, setRectanglePreview] = useState({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
 
     const [rectangleStart, setRectangleStart] = useState({ x: 0, y: 0 });
-    const addLayer = () => {
-        setLayers([...layers, { cells: {}, opacity: 1 }]);
-        setLayerVisibility([...layerVisibility, true]);
-    };
+
 
     const updateLayerOpacity = (index: number, newOpacity: number) => {
         const updatedLayers = [...layers];
@@ -72,6 +71,15 @@ const Grid: React.FC = () => {
     };
     
 
+    const renameLayer = (index: number, newName: string) => {
+        const updatedLayers = [...layers];
+        updatedLayers[index].name = newName;
+        setLayers(updatedLayers);
+    };
+    const addLayer = () => {
+        setLayers([...layers, { cells: {}, opacity: 1, name: `Layer ${layers.length + 1}` }]);
+        setLayerVisibility([...layerVisibility, true]);
+    };
     
     const removeLayer = (index: number) => {
         const newLayers = layers.filter((_, i) => i !== index);
@@ -89,6 +97,66 @@ const Grid: React.FC = () => {
         newVisibility[index] = !newVisibility[index];
         setLayerVisibility(newVisibility);
     };
+
+    const calculateLayerBounds = (layer) => {
+        let minX = gridSize, maxX = 0, minY = gridSize, maxY = 0;
+        Object.keys(layer.cells).forEach(key => {
+            const [gridX, gridY] = key.split('-').map(Number);
+            minX = Math.min(minX, gridX);
+            maxX = Math.max(maxX, gridX);
+            minY = Math.min(minY, gridY);
+            maxY = Math.max(maxY, gridY);
+        });
+        return { minX, maxX, minY, maxY };
+    };
+
+    
+    const renderLayerPreview = (layer: LayerData) => {
+        const previewSize = 50; // Size of the preview square
+        const bounds = calculateLayerBounds(layer);
+    
+        const layerWidth = bounds.maxX - bounds.minX + 1;
+        const layerHeight = bounds.maxY - bounds.minY + 1;
+    
+        const scale = Math.min(previewSize / layerWidth, previewSize / layerHeight);
+        const cells = Object.entries(layer.cells).map(([key, value]) => {
+            const [gridX, gridY] = key.split('-').map(Number);
+            const cellStyle = {
+                position: 'absolute',
+                left: `${(gridX - bounds.minX) * scale}px`,
+                top: `${(gridY - bounds.minY) * scale}px`,
+                width: `${scale}px`,
+                height: `${scale}px`,
+                backgroundColor: value.color,
+            };
+            return <div key={key} style={cellStyle}></div>;
+        });
+    
+        // Calculate the offset to center the preview
+        const offsetX = (previewSize - layerWidth * scale) / 2;
+        const offsetY = (previewSize - layerHeight * scale) / 2;
+    
+        return (
+            <div style={{
+                width: `${previewSize}px`,
+                height: `${previewSize}px`,
+                position: 'relative',
+                border: '1px solid black',
+                overflow: 'hidden',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <div style={{ 
+                    position: 'absolute', 
+                    left: `${offsetX}px`, 
+                    top: `${offsetY}px` }}>
+                    {cells}
+                </div>
+            </div>
+        );
+    };
+    
     
     
 
@@ -469,26 +537,67 @@ const Grid: React.FC = () => {
 
             {/* Toolbar */}
             <div className="toolbar">
-                <button onClick={() => setTool('paintbrush')}>Paintbrush</button>
-                <button onClick={() => setTool('pan')}>Pan</button>
-                <button onClick={() => setTool('token')}>Token</button>
-                <button onClick={() => setTool('erase')}>Erase</button>
-                <button onClick={() => setTool('fill')}>Fill</button>
-                <input type="color" value={selectedColor} onChange={(e) => handleColorChange(e.target.value)} />
+                <button onClick={() => setTool('paintbrush')}>🖌️</button>
+                <button onClick={() => setTool('pan')}>🖐️</button>
+                <button onClick={() => setTool('token')}>㊗️</button>
+                <button onClick={() => setTool('erase')}>⌫</button>
+                <button onClick={() => setTool('fill')}>🪣</button>
+                <button onClick={() => setDisplayBorders(!displayBorders)}>🫥</button>
+            </div>
+
+            <div className="color-palette">
+            <input type="color" value={selectedColor} onChange={(e) => handleColorChange(e.target.value)} />
                 {colorPalette.map((color, index) => (
                     <button key={index} style={{ backgroundColor: color }} onClick={() => handlePaletteColorClick(index)} />
                 ))}
-                <button onClick={() => setDisplayBorders(!displayBorders)}>Toggle Borders</button>
             </div>
 
             <div className="layers-bar">
-            <button onClick={addLayer}>Add Layer</button>
+            <button onClick={addLayer}>➕</button>
                 <div className='layers-button-container'>
-                    {layers.map((_, index) => (
-                        <div key={index}>
+                    {layers.map((layer, index) => (
+                        <div 
+                        key={index}
+                        className={'layer-row'}
+                        >
+                            <div>
+                                {renderLayerPreview(layer)}
+                            </div>
+                            
+                            {index === selectedLayer ? index === renamingLayer ? 
+                            <div className={'layer-edit'}>
+                            <input 
+                                value={layer.name}
+                                onChange={(e) => renameLayer(index, e.target.value)}
+                                onBlur={() => setRenamingLayer(null)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        setRenamingLayer(null);
+                                    }
+                                }
+                                }
+                                autoFocus
+                                
+                            />
+                            <span className="apply-edit" 
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                                setRenamingLayer(null);
+                            }
+                            }>✅</span>
+
+                            </div>
+                             : 
                             <button 
-                                className={index === selectedLayer ? 'selected-layer-button' : 'layer-button'}
-                                onClick={() => selectLayer(index)}>Layer {index + 1}</button>
+                                className={'selected-layer-button'}
+                                onClick={() => setRenamingLayer(index)}>
+                                    {layer.name}
+                                    </button> :
+                            <button 
+                                className={'layer-button'}
+                                onClick={() => selectLayer(index)}>
+                                    {layer.name}
+                                    </button>}
                             <button 
                                 className={layerVisibility[index] ? 'visible-button' : 'hidden-button'}
                                 onClick={() => toggleLayerVisibility(index)}>

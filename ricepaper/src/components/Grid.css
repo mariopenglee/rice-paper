@@ -30,20 +30,6 @@
     align-items: center;
   }
 
-
-.toolbar {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    display: flex;
-    gap: 10px;
-    background: #f0f0f0;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-    z-index: 1000; /* Ensure it's above other elements */
-  }
-  
   .dots {
     position: absolute;
     display: flex;
@@ -65,11 +51,6 @@
     position: absolute;
   }
 
-  .toolbar {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-  }
 
   .controls {
     position: absolute;
@@ -81,15 +62,8 @@
   }
 
 
-  .layer-button {
-    background: black;
-  }
 
-  .selected-layer-button {
-    background: white;
-    color: black;
-    scale: 1.1;
-  }
+
 
   .visible-button {
     margin: 0px;
@@ -121,6 +95,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 400px;
   }
 
   .layers-bar {
@@ -129,7 +104,53 @@
     gap: 10px;
     align-items: flex-end;
     justify-content: flex-start;
-    z-index: 2; /* Ensure it's above other elements */
+    
     bottom: 10px;
     right: 10px;
+    z-index: 1000; /* Ensure it's above other elements */
+  }
+
+  .selected-layer-button {
+    background: white;
+    color: black;
+    scale: 1.1;
+  }
+
+  .layer-button {
+    background: black;
+  }
+
+  .layer-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  
+  }
+
+
+.toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f0f0f0;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000; /* Ensure it's above other elements */
+}
+
+
+  .color-palette {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000; /* Ensure it's above other elements */
   }
