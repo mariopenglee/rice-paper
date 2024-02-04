@@ -1,4 +1,4 @@
-
+import { useState } from "react";
 const Cell = ({ x, y, size, color, opacity, zIndex }) => {
     
     const style = {
@@ -11,6 +11,10 @@ const Cell = ({ x, y, size, color, opacity, zIndex }) => {
         zIndex: zIndex,
     };
 
+    useState(() => {
+    }
+    );
+
     return (
     <div 
     className="cell" 
@@ -19,5 +23,4 @@ const Cell = ({ x, y, size, color, opacity, zIndex }) => {
     </div>
     );
 };
-
 export default Cell;

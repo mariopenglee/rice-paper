@@ -11,6 +11,7 @@
     height: 100vh;
     width: 100vw;
 
+
   }
   
   .grid-row {
@@ -53,7 +54,7 @@
 
 
   .controls {
-    position: absolute;
+    position: fixed;
     display: flex;
     gap: 10px;
     align-items: center;
@@ -65,41 +66,21 @@
 
 
 
-  .visible-button {
-    margin: 0px;
-    padding: 0px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 1px solid black;
-    background-color: #f0f0f0;
-  }
+  .layers-container {
+    width: 100%;
+    padding: 0;
 
-  .hidden-button {
-    margin: 0px;
-    padding: 0px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 1px solid black;
-    background-color: black;
-  }
+    :is(li) {
+      list-style: none;
+    }
 
-
-  .remove-button {
-    margin: 0px;
-    padding: 0px;
-  }
-
-  .layers-button-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 400px;
+    :is(li + li) {
+      margin-top: 0.5em;
+    }
   }
 
   .layers-bar {
-    position: absolute;
+    position: fixed;
     display: flex;
     gap: 10px;
     align-items: flex-end;
@@ -110,28 +91,10 @@
     z-index: 1000; /* Ensure it's above other elements */
   }
 
-  .selected-layer-button {
-    background: white;
-    color: black;
-    scale: 1.1;
-  }
-
-  .layer-button {
-    background: black;
-  }
-
-  .layer-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  
-  }
-
+ 
 
 .toolbar {
-  position: absolute;
+  position: fixed;
   top: 10px;
   left: 10px;
   display: flex;
@@ -144,13 +107,92 @@
   z-index: 1000; /* Ensure it's above other elements */
 }
 
+.toggle-layers-button {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1000; /* Ensure it's above other elements */
+}
+
+
+.layers-panel {
+  position: fixed;
+  bottom: 1em;
+  right: 1em;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.5em;
+  padding: 1em;
+  background: #f0f0f0;
+  border-radius: 5px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000; /* Ensure it's above other elements */
+}
+
+.drag-handle {
+  cursor: move;
+  color: black;
+}
+
+.layers-panel-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.add-layer-button {
+width: 100%;
+}
 
   .color-palette {
     display: flex;
     flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-start;
     gap: 10px;
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
     z-index: 1000; /* Ensure it's above other elements */
+    height: 20em;
+    padding: 1em;
+    overflow: hidden;
+
   }
+
+  .visibility-button {
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+  }
+
+
+  .palette-color-button {
+    width: 2em;
+    height: 2em;
+    box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
+  }
+
+  .add-color-button {
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+
+  .colors-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap-reverse;
+    width: 15em;
+    gap: 0.5em;
+
+  }
+

@@ -6,17 +6,33 @@ import Token from './Token';
 import Cell from './Cell';
 import Dot from './Dot';
 import { Token as TokenType } from '../types';
+import { AnimatePresence, Reorder, useDragControls, stagger, motion } from 'framer-motion';
+import BrushIcon from '@mui/icons-material/Brush';
+import PanToolIcon from '@mui/icons-material/PanTool';
+import CircleIcon from '@mui/icons-material/Circle';
+import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
+import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
+import LibraryAddIcon from '@mui/icons-material/LibraryAdd';
+import LayersIcon from '@mui/icons-material/Layers';
+import MinimizeIcon from '@mui/icons-material/Minimize';
+import AddBoxIcon from '@mui/icons-material/AddBox';
+import { ChromePicker  } from 'react-color';
+import { v4 as uuidv4 } from 'uuid';
+import { Profiler } from 'react';
+import LayerPreview from './LayerPreview';
+
 interface GridCell {
-    color: string;
+    color: string
+  
 }
+
 
 interface LayerData {
-    name: string;
+    id: string;
     cells: { [key: string]: GridCell };
     opacity: number;
+    background: string;
 }
-
-
 
 
 
@@ -29,20 +45,29 @@ const Grid: React.FC = () => {
     const [gridSize, setGridSize] = useState(initialGridSize);
     const [painting, setPainting] = useState(false);
     const [erasing, setErasing] = useState(false);
-    const [selectedColor, setSelectedColor] = useState<string>('#000000'); // Default painting color: Black
+    const [selectedColor, setSelectedColor] = useState('black');
     const [tool, setTool] = useState('paintbrush'); // 'paintbrush' or 'pan'
     const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
+    const [layerPanelOpen, setLayerPanelOpen] = useState(false); // Whether the layer panel is open
+    const [layers, setLayers] = useState<Array<LayerData>>([{ 
+        id: uuidv4(),
+        cells: {}, 
+        opacity: 1, 
+        background: 'transparent'
+    }]);
 
-    const [layers, setLayers] = useState<Array<LayerData>>([{ name: 'Layer 1', cells: {}, opacity: 1 }]);
-    const [selectedLayer, setSelectedLayer] = useState<number>(0);
-    const [renamingLayer, setRenamingLayer] = useState<number | null>(null);
+
+
+    const [selectedLayer, setSelectedLayer] = useState<string>(layers[0].id);
     const [layerVisibility, setLayerVisibility] = useState<boolean[]>([true]);
 
     const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
     const [rectanglePreview, setRectanglePreview] = useState({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
 
     const [rectangleStart, setRectangleStart] = useState({ x: 0, y: 0 });
+    const [tokens, setTokens] = useState<TokenType[]>([]); // State for tokens
+
 
 
     const updateLayerOpacity = (index: number, newOpacity: number) => {
@@ -51,14 +76,21 @@ const Grid: React.FC = () => {
         setLayers(updatedLayers);
     };
 
+    const lookupLayerIndex = useCallback((id: string) => {
+        return layers.findIndex(layer => layer.id === id);
+    }
+    , [layers]);
+
+
+
     const floodFill = (x, y, targetColor) => {
         // Check if the cell is out of bounds or already the fill color
-        if ( x < 0 || x >= gridSize || y < 0 || y >= gridSize || layers[selectedLayer].cells[`${x}-${y}`]?.color === selectedColor) {
+        if ( x < 0 || x >= gridSize || y < 0 || y >= gridSize || layers[lookupLayerIndex(selectedLayer)].cells[`${x}-${y}`]?.color === selectedColor) {
             return;
         }
     
         // Check if the cell is the target color
-        if (layers[selectedLayer].cells[`${x}-${y}`]?.color === targetColor) {
+        if (layers[lookupLayerIndex(selectedLayer)].cells[`${x}-${y}`]?.color === targetColor) {
             // Fill the cell
             paintCell(x, y);
     
@@ -70,27 +102,73 @@ const Grid: React.FC = () => {
         }
     };
     
-
-    const renameLayer = (index: number, newName: string) => {
-        const updatedLayers = [...layers];
-        updatedLayers[index].name = newName;
-        setLayers(updatedLayers);
+    // function to check if flood filling this empty cell will reach the border
+    const willFloodFillReachBorder = (x, y, targetColor) => {
+        const visited = {};
+        const queue = [];
+        queue.push([x, y]);
+        while (queue.length > 0) {
+            const [i, j] = queue.shift();
+            if (i < 0 || i >= gridSize || j < 0 || j >= gridSize) {
+                return true;
+            }
+            if (layers[lookupLayerIndex(selectedLayer)].cells[`${i}-${j}`]?.color === targetColor && !visited[`${i}-${j}`]) {
+                visited[`${i}-${j}`] = true;
+                queue.push([i-1, j], [i+1, j], [i, j-1], [i, j+1]);
+            }
+        }
+        return false;
     };
+
+ 
+
+
+
     const addLayer = () => {
-        setLayers([...layers, { cells: {}, opacity: 1, name: `Layer ${layers.length + 1}` }]);
+        const newLayer = {
+            id: uuidv4(),
+            name: 'New Layer',
+            cells: {},
+            opacity: 1,
+            background: 'transparent',
+        };
+        setLayers([...layers, newLayer]);
         setLayerVisibility([...layerVisibility, true]);
     };
-    
-    const removeLayer = (index: number) => {
-        const newLayers = layers.filter((_, i) => i !== index);
-        const newVisibility = layerVisibility.filter((_, i) => i !== index);
-        setLayers(newLayers);
-        setLayerVisibility(newVisibility);
+
+
+
+    const removeLayer = (id: string) => {
+        const index = lookupLayerIndex(id);
+        const updatedLayers = [...layers];
+        updatedLayers.splice(index, 1);
+        setLayers(updatedLayers);
+        const updatedVisibility = [...layerVisibility];
+        updatedVisibility.splice(index, 1);
+        setLayerVisibility(updatedVisibility);
+        
+        if (selectedLayer === id) {
+            console.log('selected layer removed');
+            selectLayer('none');
+        }
+
     };
-    
-    const selectLayer = (index: number) => {
-        setSelectedLayer(index);
+
+    const selectLayer = (id: string) => {
+ 
+        setSelectedLayer(id);
     };
+
+    const setLayerBackground = (id: string, color: string) => {
+        const index = lookupLayerIndex(id);
+        const updatedLayers = [...layers];
+        updatedLayers[index].background = color;
+        setLayers(updatedLayers);
+    };
+
+
+    
+
     
     const toggleLayerVisibility = (index: number) => {
         const newVisibility = [...layerVisibility];
@@ -135,17 +213,18 @@ const Grid: React.FC = () => {
         // Calculate the offset to center the preview
         const offsetX = (previewSize - layerWidth * scale) / 2;
         const offsetY = (previewSize - layerHeight * scale) / 2;
-    
         return (
             <div style={{
                 width: `${previewSize}px`,
                 height: `${previewSize}px`,
                 position: 'relative',
-                border: '1px solid black',
+                border: `${ selectedLayer === layer.id ? '2px solid black' : '1px solid lightgray'}`,
                 overflow: 'hidden',
                 display: 'flex',
                 justifyContent: 'center',
-                alignItems: 'center'
+                alignItems: 'center',
+                backgroundColor: layer.background,
+                boxSizing: 'border-box',
             }}>
                 <div style={{ 
                     position: 'absolute', 
@@ -161,20 +240,20 @@ const Grid: React.FC = () => {
     
 
 
-    const [tokens, setTokens] = useState<TokenType[]>([]); // State for tokens
 
 
 
 
     // Initial color palette
     const initialPalette = ['#0D0D0D', '#4D4D4D', '#B3B3B3', '#5C4033', '#8B1A1A', '#D0F0C0',
-        '#789EC6', '#FFF8DC', '#7D7D7D', '#1A2421']
+        '#789EC6', '#FFF8DC'];
     const [colorPalette, setColorPalette] = useState<string[]>(initialPalette);
     const [selectedPaletteIndex, setSelectedPaletteIndex] = useState<number | null>(null);
 
 
     // Function to add a new token
     const addToken = useCallback((x: number, y: number, token: TokenType) => {
+
         setTokens([...tokens, { ...token, x, y}]);
     }, [tokens]);
 
@@ -189,6 +268,7 @@ const Grid: React.FC = () => {
                     x={i * cellSize - dotSize / 2}
                     y={j * cellSize - dotSize / 2}
                     size={dotSize}
+                    cellSize={cellSize}
                 />
             );
         }
@@ -197,21 +277,32 @@ const Grid: React.FC = () => {
 
 
     const getCellFromCursorPosition = (x, y) => {
-        const gridX = Math.floor(x / cellSize);
-        const gridY = Math.floor(y / cellSize);
+        const {x: adjustedX, y: adjustedY} = accountForScroll(x, y);
+        
+        const gridX = Math.floor(adjustedX / cellSize);
+        const gridY = Math.floor(adjustedY / cellSize);
         return { gridX, gridY };
     };
+    
+    const accountForScroll = (x, y) => {
+        return {
+            x: x + gridRef.current.scrollLeft,
+            y: y + gridRef.current.scrollTop,
+        };
+    }
+
 
     const getDotFromCursorPosition = (x, y) => {
+        const { x: adjustedX, y: adjustedY } = accountForScroll(x, y);
         // get the dot closest to the cursor
-        const DotX = Math.round(x / cellSize);
-        const DotY = Math.round(y / cellSize);
+        const DotX = Math.round(adjustedX / cellSize);
+        const DotY = Math.round(adjustedY / cellSize);
         return { DotX, DotY };
     };
 
     const renderedLayersAndTokens = layers.map((layer, layerIndex) => {
         if (!layerVisibility[layerIndex]) return null;
-
+        
         // Render cells for the current layer
         const renderedCells = Object.entries(layer.cells).map(([key, value]) => {
             const [gridX, gridY] = key.split('-').map(Number);
@@ -230,24 +321,15 @@ const Grid: React.FC = () => {
 
         // Render tokens for the current layer
         const renderedTokensForLayer = tokens
-            .filter(token => token.layer === layerIndex) // Filter tokens by current layer
+            .filter(token => token.layer === layer.id) // Filter tokens by current layer
             .map(token => (
                 <Token
                     key={token.id}
                     token={token}
-                    style={{
-                        position: 'absolute',
-                        left: `${token.y * cellSize - cellSize/2}px`,
-                        top: `${token.x * cellSize - cellSize/2}px`,
-                        width: `${cellSize}px`,
-                        height: `${cellSize}px`,
-                        zIndex: layerIndex, // Apply layerIndex as zIndex
-                        cursor: 'grab',
-                        border: '1px solid #000',
-                        borderRadius: '50%',
-                        opacity: layer.opacity,
-                    }}
-                    onClick={() => console.log('clicked')}
+                    cellSize={cellSize}
+                    layerIndex={layerIndex}
+                    layerOpacity={layer.opacity}
+                    getDotFromCursorPosition={getDotFromCursorPosition}
                 />
             ));
 
@@ -258,6 +340,27 @@ const Grid: React.FC = () => {
             </React.Fragment>
         );
     });
+
+    const renderedLayerBackgrounds = layers.map((layer, layerIndex) => {
+        if (!layerVisibility[layerIndex]) return null;
+        return (
+            <div
+                key={layerIndex}
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: layer.background,
+                    opacity: layer.opacity,
+                    zIndex: layerIndex,
+                    pointerEvents: 'none',
+                }}
+            />
+        );
+    }
+    );
 
     
 
@@ -274,6 +377,7 @@ const Grid: React.FC = () => {
 
     // Function to update color in palette
     const handleColorChange = (color: string) => {
+
         setSelectedColor(color);
         if (selectedPaletteIndex !== null) {
             const newPalette = [...colorPalette];
@@ -282,11 +386,15 @@ const Grid: React.FC = () => {
         }
     };
 
+    const handleAddColor = (color: string) => {
+            setColorPalette([...colorPalette, color]);
+    }
+
     const paintCell = (gridX: number, gridY: number) => {
         // Paint the cell at the given coordinates on the selected layer
         const cellKey = `${gridX}-${gridY}`;
         const updatedLayers = [...layers];
-        updatedLayers[selectedLayer].cells[cellKey] = { color: selectedColor };
+        updatedLayers[lookupLayerIndex(selectedLayer)].cells[cellKey] = { color: selectedColor };
         setLayers(updatedLayers);
     }
 
@@ -294,7 +402,7 @@ const Grid: React.FC = () => {
         // Erase the cell at the given coordinates on the selected layer
         const cellKey = `${gridX}-${gridY}`;
         const updatedLayers = [...layers];
-        delete updatedLayers[selectedLayer].cells[cellKey];
+        delete updatedLayers[lookupLayerIndex(selectedLayer)].cells[cellKey];
         setLayers(updatedLayers);
     }
 
@@ -339,29 +447,28 @@ const Grid: React.FC = () => {
  
 
     const handleMouseMove = (event: React.MouseEvent) => {
+
         const { clientX, clientY } = event;
-        const mouseX = clientX + gridRef.current.scrollLeft;
-        const mouseY = clientY + gridRef.current.scrollTop;
         if (isDrawingRectangle) {
-            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             updateRectanglePreview(rectangleStart.x, rectangleStart.y, gridX, gridY);
 
         }
         else if (tool === 'paintbrush' && painting) {
-            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             const cellKey = `${gridX}-${gridY}`;
-            if (painting && (!layers[selectedLayer].cells[cellKey] || layers[selectedLayer].cells[cellKey].color !== selectedColor)) {
+            if (painting && (!layers[lookupLayerIndex(selectedLayer)].cells[cellKey] || layers[lookupLayerIndex(selectedLayer)].cells[cellKey].color !== selectedColor) || (!layers[lookupLayerIndex(selectedLayer)].cells[cellKey] && layers[lookupLayerIndex(selectedLayer)].background !== selectedColor)) { 
                 paintCell(gridX, gridY);
             }
         }
         else if (tool === 'erase' && isDrawingRectangle) {
-            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             updateRectanglePreview(rectangleStart.x, rectangleStart.y, gridX, gridY);
         }
         else if (tool === 'erase' && erasing) {
-            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             const cellKey = `${gridX}-${gridY}`;
-            if (erasing && layers[selectedLayer].cells[cellKey]) {
+            if (erasing && layers[lookupLayerIndex(selectedLayer)].cells[cellKey]) {
                 eraseCell(gridX, gridY);
             }
         }
@@ -370,9 +477,7 @@ const Grid: React.FC = () => {
 
         if (isDrawingRectangle) {
             const { clientX, clientY } = event;
-            const mouseX = clientX + gridRef.current.scrollLeft;
-            const mouseY = clientY + gridRef.current.scrollTop;
-            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             setRectanglePreview({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
             if (tool === 'paintbrush') {
             paintRectangle(rectangleStart.x, rectangleStart.y, gridX, gridY);
@@ -421,15 +526,17 @@ const Grid: React.FC = () => {
     
 
     const handleMouseDown = (event) => {
+        console.log('mousedown');
+
+        if (selectedLayer === 'none'){
+            alert('Please select a layer to draw on');
+            return;
+        }
         const { clientX, clientY } = event;
-        console.log(clientX, clientY);
-        // update click positions depending on how much we've scrolled
-        const mouseX = clientX + gridRef.current.scrollLeft;
-        const mouseY = clientY + gridRef.current.scrollTop;
-        console.log(mouseX, mouseY);
+
         if (tool === 'paintbrush') {
-        const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
-        console.log("cell", gridX, gridY);
+        const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
+
 
         if (event.shiftKey) {
             // start drawing a rectangle
@@ -440,16 +547,16 @@ const Grid: React.FC = () => {
         else {
         const cellKey = `${gridX}-${gridY}`;
 
-        if (!layers[selectedLayer].cells[cellKey] || layers[selectedLayer].cells[cellKey].color !== selectedColor) {
+        if (!layers[lookupLayerIndex(selectedLayer)].cells[cellKey] || layers[lookupLayerIndex(selectedLayer)].cells[cellKey].color !== selectedColor) {
             paintCell(gridX, gridY);
         }
         }
         setPainting(true);
         }
         else if (tool === 'token') {
-            const { DotX, DotY } = getDotFromCursorPosition(mouseX, mouseY);
-            console.log("dot", DotX, DotY);
-            addToken(DotY, DotX,  { 
+            const { DotX, DotY } = getDotFromCursorPosition(clientX, clientY);
+            console.log('adding token at:', DotX, DotY);
+            addToken(DotX, DotY, {
                 id: tokens.length,
                 color: selectedColor,
                 layer: selectedLayer,
@@ -458,8 +565,8 @@ const Grid: React.FC = () => {
         else if (tool === 'pan') {
         }
         else if (tool === 'erase') {
-            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
-            console.log("cell", gridX, gridY);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
+            
             if (event.shiftKey) {
                 // start drawing a rectangle
                 setIsDrawingRectangle(true);
@@ -467,16 +574,22 @@ const Grid: React.FC = () => {
             }
             else{
             const cellKey = `${gridX}-${gridY}`;
-            if (layers[selectedLayer].cells[cellKey]) {
+            if (layers[lookupLayerIndex(selectedLayer)].cells[cellKey]) {
                 eraseCell(gridX, gridY);
             }}
             setErasing(true);
         }
         else if (tool === 'fill') {
-            const { gridX, gridY } = getCellFromCursorPosition(mouseX, mouseY);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             const cellKey = `${gridX}-${gridY}`;
-            const targetColor = layers[selectedLayer].cells[cellKey]?.color;
+            const targetColor = layers[lookupLayerIndex(selectedLayer)].cells[cellKey]?.color;
+            const bounded = !willFloodFillReachBorder(gridX, gridY, targetColor);
+            
+            if (bounded) {
             floodFill(gridX, gridY, targetColor);
+            } else {
+                setLayerBackground(selectedLayer, selectedColor);
+            }
         }
         
         
@@ -507,8 +620,7 @@ const Grid: React.FC = () => {
     
     // Adjust the grid size on window resize
     useEffect(() => {
-        
-        
+
 
         const handleKeyDown = (event: KeyboardEvent) => {
             switch (event.key) {
@@ -531,100 +643,126 @@ const Grid: React.FC = () => {
         }
     }, [cellSize, tokens]);
 
+
+
+      
     // Rendering the grid
     return (
         <>
 
             {/* Toolbar */}
             <div className="toolbar">
-                <button onClick={() => setTool('paintbrush')}>🖌️</button>
-                <button onClick={() => setTool('pan')}>🖐️</button>
-                <button onClick={() => setTool('token')}>㊗️</button>
-                <button onClick={() => setTool('erase')}>⌫</button>
-                <button onClick={() => setTool('fill')}>🪣</button>
-                <button onClick={() => setDisplayBorders(!displayBorders)}>🫥</button>
+                <button onClick={() => setTool('paintbrush')}><BrushIcon /></button>
+                <button onClick={() => setTool('pan')}><PanToolIcon /></button>
+                <button onClick={() => setTool('token')}><CircleIcon /></button>
+                <button onClick={() => setTool('erase')}><CancelPresentationIcon /></button>
+                <button onClick={() => setTool('fill')}><FormatColorFillIcon /></button>
             </div>
 
             <div className="color-palette">
-            <input type="color" value={selectedColor} onChange={(e) => handleColorChange(e.target.value)} />
+                <ChromePicker
+                    color={selectedColor}
+                    onChangeComplete={(color) => handleColorChange(color.hex)}
+                    disableAlpha={true}
+                />
+                <div className="colors-container">
                 {colorPalette.map((color, index) => (
-                    <button key={index} style={{ backgroundColor: color }} onClick={() => handlePaletteColorClick(index)} />
+                    <button 
+                    key={index} 
+                    className='palette-color-button'
+                    style={{ backgroundColor: color }} 
+                    onClick={() => handlePaletteColorClick(index)} />
                 ))}
-            </div>
+                { colorPalette.length < 25 &&
+                    <button 
+                className='add-color-button'
+                onClick={() => handleAddColor(selectedColor)}
+                    >
+                    <AddBoxIcon />
+                </button>}
 
-            <div className="layers-bar">
-            <button onClick={addLayer}>➕</button>
-                <div className='layers-button-container'>
-                    {layers.map((layer, index) => (
-                        <div 
-                        key={index}
-                        className={'layer-row'}
-                        >
-                            <div>
-                                {renderLayerPreview(layer)}
-                            </div>
-                            
-                            {index === selectedLayer ? index === renamingLayer ? 
-                            <div className={'layer-edit'}>
-                            <input 
-                                value={layer.name}
-                                onChange={(e) => renameLayer(index, e.target.value)}
-                                onBlur={() => setRenamingLayer(null)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        setRenamingLayer(null);
-                                    }
-                                }
-                                }
-                                autoFocus
-                                
-                            />
-                            <span className="apply-edit" 
-                            style={{ cursor: 'pointer' }}
-                            onClick={() => {
-                                setRenamingLayer(null);
-                            }
-                            }>✅</span>
 
-                            </div>
-                             : 
-                            <button 
-                                className={'selected-layer-button'}
-                                onClick={() => setRenamingLayer(index)}>
-                                    {layer.name}
-                                    </button> :
-                            <button 
-                                className={'layer-button'}
-                                onClick={() => selectLayer(index)}>
-                                    {layer.name}
-                                    </button>}
-                            <button 
-                                className={layerVisibility[index] ? 'visible-button' : 'hidden-button'}
-                                onClick={() => toggleLayerVisibility(index)}>
-                            </button>
-                            <button 
-                                className={'remove-button'}
-                            onClick={() => removeLayer(index)}>X</button>
-                            <input 
-                                type="range" 
-                                min={0} 
-                                max={1} 
-                                step={0.1} 
-                                value={layers[index].opacity}
-                                onChange={(e) => updateLayerOpacity(index, Number(e.target.value))}
-                            />
-                        </div>
-                    ))}
                 </div>
             </div>
+            <button 
+            className='toggle-layers-button'
+            onClick={() => setLayerPanelOpen(!layerPanelOpen)}
+            style={
+                {
+                    display: layerPanelOpen ? 'none' : 'block',
+                }
+            }
+             >
+                    <LayersIcon />
+            </button>
+            {
+            layerPanelOpen &&
+                <motion.div 
+            className='layers-panel' 
+            initial={{ x: 300, opacity: 0, pointerEvents: 'none' }}
+            animate={{ x: 0, opacity: 0.5, pointerEvents: 'auto' }}
+            exit={{ x: 300, opacity: 0, pointerEvents: 'none' }}
+            whileHover={{ 
+                opacity: 1,
+                pointerEvents: 'auto',
+             }}
+                >
+                
+                <div className='layers-panel-header'>
+                    <button 
+                    className='add-layer-button'
+                    disabled={layers.length >= 10}
+                    onClick={addLayer}>
+                        <LibraryAddIcon />
+                        </button>
+                    <button
+                     onClick={() => setLayerPanelOpen(false)}
 
+                     >
+                        <MinimizeIcon />
+                    </button>
+                </div>
+                
+                <Reorder.Group
+                className='layers-container'
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition=
+                {{
+                    staggerChildren: 0.1,
+                    delayChildren: 0.3,
+                }}
+                axis="y"
+                onReorder={setLayers}
+                values={layers}
+
+                >
+                    <AnimatePresence>
+                    {layers.map((layer, index) => (
+                        <LayerPreview
+                        key={layer.id}
+                        layer={layer}
+                        index={index}
+                        selected={layer.id === selectedLayer}
+                        selectLayer={selectLayer}
+                        toggleLayerVisibility={toggleLayerVisibility}
+                        updateLayerOpacity={updateLayerOpacity}
+                        removeLayer={removeLayer}
+                        layerVisibility={layerVisibility}
+                        renderLayerPreview={renderLayerPreview}
+                        />
+
+                    ))}
+</AnimatePresence>
+</Reorder.Group>
+                
+            </motion.div>}
 
 
             {/* Grid */}
             <div
-                onMouseDown={handleMouseDown}
-                onMouseUp={handleMouseUp}
-                onMouseMove={handleMouseMove}
+                
                 style={{ 
                     width: '100%', 
                     height: '100%',
@@ -632,27 +770,21 @@ const Grid: React.FC = () => {
                     zIndex: -10,
                  }}
             >
-
+                {renderedLayerBackgrounds}
 
                     <div 
                className="grid" 
-               ref={gridRef}>
-                <div
-                className="grid-overlay"
-                style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: '0',
-                    width: 'fit-content',
-                    height: 'fit-content',
-                }}
-            >
+               ref={gridRef}
+               onPointerDown={handleMouseDown}
+                onPointerUp={handleMouseUp}
+                onPointerMove={handleMouseMove}
+               >
+                
                 {renderedLayersAndTokens}
                 {dots}
                 {renderRectanglePreview()}
                 
        
-    </div>
 </div>
 
             </div>

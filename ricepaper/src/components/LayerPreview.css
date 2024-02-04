@@ -1,0 +1,73 @@
+.layer-name {
+  text-align: left;
+  background-color: transparent;
+  color: black;
+  font-size: 1em;
+  width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+}
+
+.layer-name-input {
+  font-family: inherit;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  text-align: left;
+  background-color: white;
+  color: black;
+  font-size: 1em;
+  width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-name-input:focus {
+  outline: none;
+  border-bottom: 2px solid rgb(141, 141, 171);
+}
+
+.layer-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+
+}
+
+.rename-button {
+  margin: 0px;
+  padding: 0px;
+}
+
+
+
+.visible-button {
+  margin: 0px;
+  padding: 0px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid black;
+  background-color: #f0f0f0;
+}
+
+.hidden-button {
+  margin: 0px;
+  padding: 0px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid black;
+  background-color: black;
+}
+
+
+.remove-button {
+  margin: 0px;
+  padding: 0px;
+}
