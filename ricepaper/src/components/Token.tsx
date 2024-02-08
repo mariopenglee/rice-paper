@@ -16,109 +16,133 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
     y: token.y * cellSize - cellSize / 2,
   });
 
-  // New state for the preview position
   const [previewPositions, setPreviewPositions] = useState({
     x: token.x * cellSize - cellSize / 2,
     y: token.y * cellSize - cellSize / 2,
   });
 
-  const [isDragging, setIsDragging] = useState(false); // New state to track dragging status
+  const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [distanceInCells, setDistanceInCells] = useState(0); 
 
   const handleDrag = useCallback((x: number, y: number) => {
-  const { DotX, DotY } = getDotFromCursorPosition(x, y);
-  // Check if the token has moved to a new cell to minimize state updates
-  if (previewPositions.x !== DotX * cellSize - cellSize / 2 || 
-      previewPositions.y !== DotY * cellSize - cellSize / 2) {
-    // Update the preview's position only if it has changed
-    setPreviewPositions({
-      x: DotX * cellSize - cellSize / 2,
-      y: DotY * cellSize - cellSize / 2,
+    const { DotX, DotY } = getDotFromCursorPosition(x, y);
+
+    if (previewPositions.x !== DotX * cellSize - cellSize / 2 || 
+        previewPositions.y !== DotY * cellSize - cellSize / 2) {
+      setPreviewPositions({
+        x: DotX * cellSize - cellSize / 2,
+        y: DotY * cellSize - cellSize / 2,
+      });
+    }
+    if (!isDragging) {
+      setIsDragging(true);
+      setStartDragPosition({ x: positions.x, y: positions.y });
+    }
+    const { x: deltaX, y: deltaY } = {
+      x: DotX * cellSize - cellSize / 2 - startDragPosition.x,
+      y: DotY * cellSize - cellSize / 2 - startDragPosition.y,
+    };
+    const distance = Math.sqrt(deltaX ** 2 + deltaY ** 2) / cellSize;
+    
+    if (distance !== distanceInCells) {
+      setDistanceInCells(distance);
+    }
+
+  }, [cellSize, getDotFromCursorPosition, isDragging, previewPositions, positions]);
+
+  const handleDragEnd = useCallback((info: { offset: { x: number; y: number } }) => {
+    setDistanceInCells(0);
+    const deltaX = Math.round(info.offset.x / cellSize);
+    const deltaY = Math.round(info.offset.y / cellSize);
+    setPositions({
+      x: positions.x + deltaX * cellSize,
+      y: positions.y + deltaY * cellSize,
     });
-  }
-  // Only set dragging to true if it's not already set
-  if (!isDragging) setIsDragging(true);
-}, [cellSize, getDotFromCursorPosition, isDragging, previewPositions]);
-
-const handleDragEnd = useCallback((info: { offset: { x: number; y: number } }) => {
-  //console.log(info.offset.x, info.offset.y);
-  // calculate how many cells the token has moved
-  const deltaX = Math.round(info.offset.x / cellSize);
-  const deltaY = Math.round(info.offset.y / cellSize);
-  // Update the token's position
-  setPositions({
-    x: positions.x + deltaX * cellSize - info.offset.x,
-    y: positions.y + deltaY * cellSize - info.offset.y,
-  });
-  // Reset the preview position
-  setPreviewPositions({
-    x: positions.x,
-    y: positions.y,
-  });
-  setIsDragging(false); // Reset dragging status
-}, [cellSize, getDotFromCursorPosition, positions]);
-
-
-useEffect(() => {
-  //console.log('Token updated:', token.id);
-}
-);
+    setPreviewPositions({
+      x: positions.x,
+      y: positions.y,
+    });
+    setIsDragging(false);
+    
+  }, [cellSize, positions]);
 
   return (
     <React.Fragment>
-      {/* Preview Overlay */}
       {isDragging && (
-        <div
-          className={`token token-${token.id} preview`}
-          style={{
-            position: 'absolute',
-            cursor: 'pointer',
-            borderRadius: '50%',
-            border: '2px dashed gray', // Make the preview look different
-            background: 'none',
-            left: `${previewPositions.x}px`,
-            top: `${previewPositions.y}px`,
-            width: `${cellSize}px`,
-            height: `${cellSize}px`,
-            zIndex: layerIndex + 1, // Ensure the preview is above the actual token
-            opacity: 0.5, // Make the preview semi-transparent
-          }}
-        ></div>
+        <>
+          <div
+            className={`token token-${token.id} preview`}
+            style={{
+              position: 'absolute',
+              cursor: 'pointer',
+              borderRadius: '50%',
+              border: '2px dashed gray',
+              background: 'none',
+              left: `${previewPositions.x}px`,
+              top: `${previewPositions.y}px`,
+              width: `${cellSize}px`,
+              height: `${cellSize}px`,
+              zIndex: layerIndex + 1,
+              opacity: 0.5,
+            }}
+          ></div>
+          {/* SVG Overlay */}
+          <svg style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+            <line
+              x1={startDragPosition.x + cellSize / 2}
+              y1={startDragPosition.y + cellSize / 2}
+              x2={previewPositions.x + cellSize / 2}
+              y2={previewPositions.y + cellSize / 2}
+              stroke="gray"
+              strokeWidth="2"
+              strokeDasharray="4"
+            />
+            {/* Circle showing the radius of movement */}
+            <circle
+              cx={startDragPosition.x + cellSize / 2}
+              cy={startDragPosition.y + cellSize / 2}
+              r={distanceInCells * cellSize}
+              stroke="gray"
+              strokeWidth="2"
+              fill="none"
+              strokeDasharray="4"
+            />
+            {/* Text indicating the distance in cells */}
+            <text
+              x={startDragPosition.x + cellSize / 2 + 10} // Adjust as necessary for visibility
+              y={startDragPosition.y + cellSize / 2 - 10} // Adjust as necessary for visibility
+              fill="gray"
+              fontSize="16"
+              fontFamily="Arial"
+            >
+              {`${distanceInCells.toFixed(1)} cells`}
+            </text>
+          </svg>
+        </>
       )}
 
-      {/* Actual Token */}
       <motion.div
         className={`token token-${token.id}`}
         style={{
           position: 'absolute',
           cursor: 'pointer',
           borderRadius: '50%',
-          border: '1px solid black',
           background: token.color,
           left: `${positions.x}px`,
           top: `${positions.y}px`,
           width: `${cellSize}px`,
           height: `${cellSize}px`,
-          zIndex: layerIndex,
+          zIndex: `${layerIndex + 10}`,
           opacity: layerOpacity,
         }}
         drag
         dragMomentum={false}
-        onPointerDown={(event) => 
-          {
-            event.stopPropagation();
-            //console.log('Token clicked:', token.id);
-          }
-        }
-        onDragEnd={(event, info) => {
-          handleDragEnd(info)
-          console.log('event:', event);
-        }}
-        onDrag={(event, info) => 
-          {
-            handleDrag(info.point.x, info.point.y);
-            console.log('event:', event);
-          }
-        }
+        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+        dragElastic={0}
+        onPointerDown={(event) => event.stopPropagation()}
+        onDragEnd={(event, info) => handleDragEnd(info)}
+        onDrag={(event, info) => handleDrag(info.point.x, info.point.y)}
       ></motion.div>
     </React.Fragment>
   );
