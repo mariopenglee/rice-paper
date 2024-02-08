@@ -1,10 +1,9 @@
 import React, { memo, useEffect, useState, useCallback } from 'react';
-import { Token as TokenType } from '../types';
 import { motion } from 'framer-motion';
 import './Token.css';
 
 interface TokenProps {
-  token: TokenType;
+  token: any;
   cellSize: number;
   layerIndex: number;
   layerOpacity: number;
@@ -25,7 +24,7 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
 
   const [isDragging, setIsDragging] = useState(false); // New state to track dragging status
 
-  const handleDrag = useCallback((x, y) => {
+  const handleDrag = useCallback((x: number, y: number) => {
   const { DotX, DotY } = getDotFromCursorPosition(x, y);
   // Check if the token has moved to a new cell to minimize state updates
   if (previewPositions.x !== DotX * cellSize - cellSize / 2 || 
@@ -40,7 +39,7 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
   if (!isDragging) setIsDragging(true);
 }, [cellSize, getDotFromCursorPosition, isDragging, previewPositions]);
 
-const handleDragEnd = useCallback((info) => {
+const handleDragEnd = useCallback((info: { offset: { x: number; y: number } }) => {
   //console.log(info.offset.x, info.offset.y);
   // calculate how many cells the token has moved
   const deltaX = Math.round(info.offset.x / cellSize);
@@ -110,8 +109,16 @@ useEffect(() => {
             //console.log('Token clicked:', token.id);
           }
         }
-        onDragEnd={(event, info) => handleDragEnd(info)}
-        onDrag={(event, info) => handleDrag(info.point.x, info.point.y)}
+        onDragEnd={(event, info) => {
+          handleDragEnd(info)
+          console.log('event:', event);
+        }}
+        onDrag={(event, info) => 
+          {
+            handleDrag(info.point.x, info.point.y);
+            console.log('event:', event);
+          }
+        }
       ></motion.div>
     </React.Fragment>
   );

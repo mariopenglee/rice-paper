@@ -5,7 +5,6 @@ import './Grid.css';
 import Token from './Token';
 import Cell from './Cell';
 import Dot from './Dot';
-import { Token as TokenType } from '../types';
 import { AnimatePresence, Reorder, useDragControls, stagger, motion } from 'framer-motion';
 import BrushIcon from '@mui/icons-material/Brush';
 import PanToolIcon from '@mui/icons-material/PanTool';
@@ -18,7 +17,6 @@ import MinimizeIcon from '@mui/icons-material/Minimize';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import { ChromePicker  } from 'react-color';
 import { v4 as uuidv4 } from 'uuid';
-import { Profiler } from 'react';
 import LayerPreview from './LayerPreview';
 
 interface GridCell {
@@ -268,7 +266,6 @@ const Grid: React.FC = () => {
                     x={i * cellSize - dotSize / 2}
                     y={j * cellSize - dotSize / 2}
                     size={dotSize}
-                    cellSize={cellSize}
                 />
             );
         }

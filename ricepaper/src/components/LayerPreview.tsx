@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -9,13 +9,24 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { AlphaPicker  } from 'react-color';
 
 import './LayerPreview.css';
+interface LayerPreviewProps {
+    layer: any;
+    index: number;
+    selected: boolean;
+    selectLayer: (id: string) => void;
+    removeLayer: (id: string) => void;
+    updateLayerOpacity: (index: number, opacity: number) => void;
+    toggleLayerVisibility: (index: number) => void;
+    layerVisibility: boolean[];
+    renderLayerPreview: (layer: any) => React.ReactNode;
+}
 
 
-
-export default function LayerPreview( { layer, index, selected, selectLayer, removeLayer, updateLayerOpacity, toggleLayerVisibility, layerVisibility, renderLayerPreview }) {
+export default function LayerPreview( { layer, index, selected, selectLayer, removeLayer, updateLayerOpacity, toggleLayerVisibility, layerVisibility, renderLayerPreview }: LayerPreviewProps) {
     const [renaming, setRenaming] = useState(false);
     const [layerName, setLayerName] = useState('New Layer');
     const controls = useDragControls();
+
     return (
         <Reorder.Item 
         key={layer.id} 
@@ -40,6 +51,7 @@ export default function LayerPreview( { layer, index, selected, selectLayer, rem
             onPointerDown={(e) => { e.stopPropagation(); controls.start(e) }}
             ><DragIndicatorIcon /></div>
 
+            <div className={'visibility'}>
              <button 
                 className={'visibility-button'}
                 onClick={() => toggleLayerVisibility(index)}>
@@ -47,15 +59,15 @@ export default function LayerPreview( { layer, index, selected, selectLayer, rem
             </button>
             <AlphaPicker
             color={{r: 0, g: 0, b: 0, a: layer.opacity}}
-            onChange={(color) => updateLayerOpacity(index, color.rgb.a)}
-            direction='vertical'
-            width='18px'
-            height='3rem'
-            />
+            onChange={(color: any) => updateLayerOpacity(index, color.rgb.a)}
+            width='3rem'
+                />
+
+            </div>
+
             <div>
                 {renderLayerPreview(layer)}
             </div>
-            
             {renaming ? (
                 <>
                 <input 
@@ -85,6 +97,8 @@ export default function LayerPreview( { layer, index, selected, selectLayer, rem
             </button>
             </>
             )}
+
+              
             
             <button 
                 className={'remove-button'}

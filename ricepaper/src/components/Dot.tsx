@@ -1,23 +1,25 @@
-import React from 'react';
+interface DotProps {
+    x: number;
+    y: number;
+    size: number;
+}
+const Dot = ({ x, y, size }: DotProps) => {
 
-const Dot = ({ x, y, size, cellSize }) => {
 
-    const dotStyle = {
-        position: 'absolute',
+    return (
+
+    <div 
+    style={
+        {
+            position: 'absolute',
         left: `${x}px`,
         top: `${y}px`,
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: '50%',
         backgroundColor: 'gray',
-        
-    };
-
-
-    return (
-
-    <div 
-    style={dotStyle}
+        }
+    }
     onClick={() => console.log('Dot clicked:', x, y)}
 
      />

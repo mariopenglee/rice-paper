@@ -1,5 +1,16 @@
 import { useState } from "react";
-const Cell = ({ x, y, size, color, opacity, zIndex }) => {
+
+interface CellProps {
+    x: number;
+    y: number;
+    size: number;
+    color: string;
+    opacity: number;
+    zIndex: number;
+}
+
+
+const Cell = ({ x, y, size, color, opacity, zIndex }: CellProps) => {
     
     const style = {
         left: x,
