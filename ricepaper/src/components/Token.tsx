@@ -108,7 +108,6 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
               fill="none"
               strokeDasharray="4"
             />
-            {/* Text indicating the distance in cells */}
             <text
               x={startDragPosition.x + cellSize / 2 + 10} // Adjust as necessary for visibility
               y={startDragPosition.y + cellSize / 2 - 10} // Adjust as necessary for visibility
