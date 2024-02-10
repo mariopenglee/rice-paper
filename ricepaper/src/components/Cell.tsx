@@ -7,10 +7,11 @@ interface CellProps {
     color: string;
     opacity: number;
     zIndex: number;
+    pointerEvents: string;
 }
 
 
-const Cell = ({ x, y, size, color, opacity, zIndex }: CellProps) => {
+const Cell = ({ x, y, size, color, opacity, zIndex, pointerEvents }: CellProps) => {
     
     const style = {
         left: x,
@@ -20,6 +21,7 @@ const Cell = ({ x, y, size, color, opacity, zIndex }: CellProps) => {
         backgroundColor: color,
         opacity: opacity,
         zIndex: zIndex,
+        pointerEvents: pointerEvents,
     };
 
     useState(() => {

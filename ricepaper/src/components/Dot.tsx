@@ -2,6 +2,7 @@ interface DotProps {
     x: number;
     y: number;
     size: number;
+
 }
 const Dot = ({ x, y, size }: DotProps) => {
 
@@ -18,9 +19,10 @@ const Dot = ({ x, y, size }: DotProps) => {
         height: `${size}px`,
         borderRadius: '50%',
         backgroundColor: 'gray',
+        zIndex: 100,
+        pointerEvents: 'none',
         }
     }
-    onClick={() => console.log('Dot clicked:', x, y)}
 
      />
      );

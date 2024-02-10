@@ -1,6 +1,6 @@
 // src/components/Grid.tsx
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import './Grid.css';
 import Token from './Token';
 import Cell from './Cell';
@@ -30,8 +30,17 @@ interface LayerData {
     cells: { [key: string]: GridCell };
     opacity: number;
     background: string;
+    visibility: boolean;
 }
 
+interface TokenType {
+    id: string;
+    x: number;
+    y: number;
+    color: string;
+    layer: string;
+    label: string;
+}
 
 
 
@@ -52,14 +61,14 @@ const Grid: React.FC = () => {
         id: uuidv4(),
         cells: {}, 
         opacity: 1, 
-        background: 'transparent'
+        background: 'transparent',
+        visibility: true,
     }]);
 
 
 
     const [selectedLayer, setSelectedLayer] = useState<string>(layers[0].id);
-    const [layerVisibility, setLayerVisibility] = useState<boolean[]>([true]);
-
+    const [layerOrder, setLayerOrder] = useState<string[]>([layers[0].id]);
     const [isDrawingRectangle, setIsDrawingRectangle] = useState(false);
     const [rectanglePreview, setRectanglePreview] = useState({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
 
@@ -68,16 +77,18 @@ const Grid: React.FC = () => {
 
 
 
-    const updateLayerOpacity = (index: number, newOpacity: number) => {
-        const updatedLayers = [...layers];
-        updatedLayers[index].opacity = newOpacity;
-        setLayers(updatedLayers);
-    };
-
     const lookupLayerIndex = useCallback((id: string) => {
         return layers.findIndex(layer => layer.id === id);
     }
     , [layers]);
+
+
+    const updateLayerOpacity = (id: string, newOpacity: number) => {
+        const index = lookupLayerIndex(id);
+        const updatedLayers = [...layers];
+        updatedLayers[index].opacity = newOpacity;
+        setLayers(updatedLayers);
+    };
 
 
 
@@ -129,9 +140,10 @@ const Grid: React.FC = () => {
             cells: {},
             opacity: 1,
             background: 'transparent',
+            visibility: true,
         };
         setLayers([...layers, newLayer]);
-        setLayerVisibility([...layerVisibility, true]);
+        setLayerOrder([...layerOrder, newLayer.id]);
     };
 
 
@@ -141,9 +153,8 @@ const Grid: React.FC = () => {
         const updatedLayers = [...layers];
         updatedLayers.splice(index, 1);
         setLayers(updatedLayers);
-        const updatedVisibility = [...layerVisibility];
-        updatedVisibility.splice(index, 1);
-        setLayerVisibility(updatedVisibility);
+        setLayerOrder(layerOrder.filter(layerId => layerId !== id));
+
         
         if (selectedLayer === id) {
             console.log('selected layer removed');
@@ -164,15 +175,13 @@ const Grid: React.FC = () => {
         setLayers(updatedLayers);
     };
 
+    const toggleLayerVisibility = (id: string) => {
+        const index = lookupLayerIndex(id);
+        const updatedLayers = [...layers];
+        updatedLayers[index].visibility = !updatedLayers[index].visibility;
+        setLayers(updatedLayers);
+    }
 
-    
-
-    
-    const toggleLayerVisibility = (index: number) => {
-        const newVisibility = [...layerVisibility];
-        newVisibility[index] = !newVisibility[index];
-        setLayerVisibility(newVisibility);
-    };
 
     const calculateLayerBounds = (layer) => {
         let minX = gridSize, maxX = 0, minY = gridSize, maxY = 0;
@@ -250,10 +259,16 @@ const Grid: React.FC = () => {
 
 
     // Function to add a new token
-    const addToken = useCallback((x: number, y: number, token: TokenType) => {
+    const addToken = useCallback((token: TokenType) => {
 
-        setTokens([...tokens, { ...token, x, y}]);
+        setTokens([...tokens, token]);
     }, [tokens]);
+
+    const isTokenAtPosition = useCallback ((x: number, y: number, layer: string) => {
+        const { DotX, DotY } = getDotFromCursorPosition(x, y);
+        return tokens.some(token => token.x === DotX && token.y === DotY && token.layer === layer);
+    }, [tokens]);
+
 
 
     const dotSize = 2; // Size of the dots
@@ -289,17 +304,24 @@ const Grid: React.FC = () => {
     }
 
 
-    const getDotFromCursorPosition = (x, y) => {
+
+    const getDotFromCursorPosition = useCallback((x, y) => {
         const { x: adjustedX, y: adjustedY } = accountForScroll(x, y);
-        // get the dot closest to the cursor
         const DotX = Math.round(adjustedX / cellSize);
         const DotY = Math.round(adjustedY / cellSize);
         return { DotX, DotY };
-    };
+    }
+    , [cellSize]); 
 
-    const renderedLayersAndTokens = layers.map((layer, layerIndex) => {
-        if (!layerVisibility[layerIndex]) return null;
-        
+
+
+
+    const renderedLayersAndTokens = layerOrder.map((layerId, layerIndex) => {
+        const layer = layers.find(layer => layer.id === layerId);
+        if (!layer) return null; // Handle if layer is not found
+
+        const efficientOpacity = layer.opacity * Number(layer.visibility);
+        const pointerEvents = selectedLayer === layer.id ? 'auto' : 'none';
         // Render cells for the current layer
         const renderedCells = Object.entries(layer.cells).map(([key, value]) => {
             const [gridX, gridY] = key.split('-').map(Number);
@@ -310,8 +332,9 @@ const Grid: React.FC = () => {
                     y={gridY * cellSize}
                     size={cellSize}
                     color={value.color}
-                    opacity={layer.opacity}
+                    opacity={efficientOpacity}
                     zIndex={layerIndex}
+                    pointerEvents={pointerEvents}
                 />
             );
         });
@@ -325,13 +348,15 @@ const Grid: React.FC = () => {
                     token={token}
                     cellSize={cellSize}
                     layerIndex={layerIndex}
-                    layerOpacity={layer.opacity}
+                    layerOpacity={efficientOpacity}
                     getDotFromCursorPosition={getDotFromCursorPosition}
                 />
             ));
 
         return (
-            <React.Fragment key={layerIndex}>
+            <React.Fragment 
+            key={layerIndex}
+            >
                 {renderedCells}
                 {renderedTokensForLayer}
             </React.Fragment>
@@ -339,7 +364,6 @@ const Grid: React.FC = () => {
     });
 
     const renderedLayerBackgrounds = layers.map((layer, layerIndex) => {
-        if (!layerVisibility[layerIndex]) return null;
         return (
             <div
                 key={layerIndex}
@@ -358,6 +382,8 @@ const Grid: React.FC = () => {
         );
     }
     );
+
+    
 
     
 
@@ -553,10 +579,13 @@ const Grid: React.FC = () => {
         else if (tool === 'token') {
             const { DotX, DotY } = getDotFromCursorPosition(clientX, clientY);
             console.log('adding token at:', DotX, DotY);
-            addToken(DotX, DotY, {
-                id: tokens.length,
+            addToken({
+                id: uuidv4(),
                 color: selectedColor,
                 layer: selectedLayer,
+                x: DotX,
+                y: DotY,
+                label: '',
              });
         }
         else if (tool === 'pan') {
@@ -638,7 +667,7 @@ const Grid: React.FC = () => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         }
-    }, [cellSize, tokens]);
+    }, [cellSize, tokens, layers]);
 
 
 
@@ -720,7 +749,7 @@ const Grid: React.FC = () => {
                     </button>
                 </div>
                 
-                <Reorder.Group
+        <Reorder.Group
                 className='layers-container'
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -731,26 +760,29 @@ const Grid: React.FC = () => {
                     delayChildren: 0.3,
                 }}
                 axis="y"
-                onReorder={setLayers}
-                values={layers}
+                onReorder={setLayerOrder} // Update the layer order state
+                values={layerOrder}
 
                 >
                     <AnimatePresence>
-                    {layers.map((layer, index) => (
-                        <LayerPreview
+                {layerOrder.map((layerId, index) => {
+                const layer = layers.find(layer => layer.id === layerId);
+                if (!layer) return null; // Handle if layer is not found
+                return (
+                    <LayerPreview
                         key={layer.id}
                         layer={layer}
-                        index={index}
                         selected={layer.id === selectedLayer}
                         selectLayer={selectLayer}
-                        toggleLayerVisibility={toggleLayerVisibility}
                         updateLayerOpacity={updateLayerOpacity}
+                        toggleLayerVisibility={toggleLayerVisibility}
                         removeLayer={removeLayer}
-                        layerVisibility={layerVisibility}
                         renderLayerPreview={renderLayerPreview}
-                        />
 
-                    ))}
+                    />
+                );
+            })}
+
 </AnimatePresence>
 </Reorder.Group>
                 

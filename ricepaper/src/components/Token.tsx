@@ -1,13 +1,15 @@
 import React, { memo, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import './Token.css';
-
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 interface TokenProps {
   token: any;
   cellSize: number;
   layerIndex: number;
   layerOpacity: number;
   getDotFromCursorPosition: (x: number, y: number) => { DotX: number, DotY: number };
+
 }
 
 const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity, getDotFromCursorPosition }) => {
@@ -24,10 +26,12 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
   const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [distanceInCells, setDistanceInCells] = useState(0); 
+  const [renaming, setRenaming] = useState(false);
+  const [label, setLabel] = useState(token.label);
+  const [labelVisibility, setLabelVisibility] = useState(true);
 
   const handleDrag = useCallback((x: number, y: number) => {
     const { DotX, DotY } = getDotFromCursorPosition(x, y);
-
     if (previewPositions.x !== DotX * cellSize - cellSize / 2 || 
         previewPositions.y !== DotY * cellSize - cellSize / 2) {
       setPreviewPositions({
@@ -67,6 +71,12 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
     
   }, [cellSize, positions]);
 
+  useEffect(() => {
+    console.log('Token updated:', token.id);
+    console.log('labelvisibility:', labelVisibility);
+  }
+  ), [token, renaming];
+
   return (
     <React.Fragment>
       {isDragging && (
@@ -83,12 +93,19 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
               top: `${previewPositions.y}px`,
               width: `${cellSize}px`,
               height: `${cellSize}px`,
-              zIndex: layerIndex + 1,
               opacity: 0.5,
             }}
           ></div>
           {/* SVG Overlay */}
-          <svg style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+          <svg style={{ 
+            position: 'absolute', 
+            left: 0, 
+            top: 0, 
+            width: '100%', 
+            height: '100%', 
+            pointerEvents: 'none',
+            zIndex: '100',
+             }}>
             <line
               x1={startDragPosition.x + cellSize / 2}
               y1={startDragPosition.y + cellSize / 2}
@@ -124,25 +141,81 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
       <motion.div
         className={`token token-${token.id}`}
         style={{
-          position: 'absolute',
-          cursor: 'pointer',
-          borderRadius: '50%',
           background: token.color,
           left: `${positions.x}px`,
           top: `${positions.y}px`,
           width: `${cellSize}px`,
           height: `${cellSize}px`,
-          zIndex: `${layerIndex + 10}`,
           opacity: layerOpacity,
+          backgroundImage: `url(${token.image})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
         drag
         dragMomentum={false}
+        layout
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0}
         onPointerDown={(event) => event.stopPropagation()}
-        onDragEnd={(event, info) => handleDragEnd(info)}
-        onDrag={(event, info) => handleDrag(info.point.x, info.point.y)}
-      ></motion.div>
+        onDragEnd={(event, info) =>
+          {
+            if (isDragging) {
+              handleDragEnd(info);
+            }
+          }}
+        onDrag={(event, info) => {
+          // Prevent dragging if renaming is in progress
+          if (!renaming) {
+            handleDrag(info.point.x, info.point.y);
+          }
+        }}
+        onDoubleClick={() => setRenaming(true)}
+      >
+        <div
+          className={'token-label-container'}
+          style={{
+           pointerEvents: renaming ? 'auto' : 'none',
+          }}
+        >
+          {renaming ? (
+            <>
+              <input
+                className={'token-label-input'}
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                onBlur={() => setRenaming(false)}
+                autoFocus
+                autoSave='true'
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setRenaming(false);
+                  }
+                }}
+              />
+              <button
+                onPointerDown={(e) => {
+                  e.preventDefault(); // Prevents the input from losing focus
+                  setRenaming(false);
+                  setLabelVisibility(!labelVisibility);
+                }}
+                className={'visibility-button'}
+              >
+                {labelVisibility ? <VisibilityIcon /> : <VisibilityOffIcon />}
+              </button>
+            </>
+          ) : (
+            label && (
+              <span
+                className={'token-label'}
+                onClick={() => setRenaming(true)}
+              >
+                {labelVisibility ? label : '...'}
+              </span>
+            )
+          )}
+        </div>
+
+      </motion.div>
     </React.Fragment>
   );
 };
