@@ -5,7 +5,7 @@ import './Grid.css';
 import Token from './Token';
 import Cell from './Cell';
 import Dot from './Dot';
-import { AnimatePresence, Reorder, useDragControls, stagger, motion } from 'framer-motion';
+import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import BrushIcon from '@mui/icons-material/Brush';
 import PanToolIcon from '@mui/icons-material/PanTool';
 import CircleIcon from '@mui/icons-material/Circle';
@@ -19,6 +19,7 @@ import { ChromePicker  } from 'react-color';
 import { v4 as uuidv4 } from 'uuid';
 import LayerPreview from './LayerPreview';
 
+import Inventory from './Inventory';
 interface GridCell {
     color: string
   
@@ -65,6 +66,8 @@ const Grid: React.FC = () => {
         visibility: true,
     }]);
 
+    // Inventory states
+    const inventoryRef = useRef<HTMLDivElement>(null); // Ref for the inventory container
 
 
     const [selectedLayer, setSelectedLayer] = useState<string>(layers[0].id);
@@ -74,7 +77,7 @@ const Grid: React.FC = () => {
 
     const [rectangleStart, setRectangleStart] = useState({ x: 0, y: 0 });
     const [tokens, setTokens] = useState<TokenType[]>([]); // State for tokens
-
+    const [draggingToken, setDraggingToken] = useState<TokenType | null>(null); // State for the token being dragged
 
 
     const lookupLayerIndex = useCallback((id: string) => {
@@ -258,16 +261,16 @@ const Grid: React.FC = () => {
     const [selectedPaletteIndex, setSelectedPaletteIndex] = useState<number | null>(null);
 
 
-    // Function to add a new token
-    const addToken = useCallback((token: TokenType) => {
+    // Token related functions
 
+    const addToken = useCallback((token: TokenType) => {
         setTokens([...tokens, token]);
     }, [tokens]);
 
-    const isTokenAtPosition = useCallback ((x: number, y: number, layer: string) => {
-        const { DotX, DotY } = getDotFromCursorPosition(x, y);
-        return tokens.some(token => token.x === DotX && token.y === DotY && token.layer === layer);
-    }, [tokens]);
+    const deleteToken = useCallback((id: string) => {
+        setTokens(tokens.filter(token => token.id !== id));
+    }
+    , [tokens]);
 
 
 
@@ -332,9 +335,6 @@ const Grid: React.FC = () => {
                     y={gridY * cellSize}
                     size={cellSize}
                     color={value.color}
-                    opacity={efficientOpacity}
-                    zIndex={layerIndex}
-                    pointerEvents={pointerEvents}
                 />
             );
         });
@@ -347,19 +347,32 @@ const Grid: React.FC = () => {
                     key={token.id}
                     token={token}
                     cellSize={cellSize}
-                    layerIndex={layerIndex}
-                    layerOpacity={efficientOpacity}
                     getDotFromCursorPosition={getDotFromCursorPosition}
+                    deleteToken={deleteToken}   
+                    inventoryRef= {inventoryRef}
+                    setDraggingToken={setDraggingToken}
                 />
             ));
 
         return (
-            <React.Fragment 
+            <div
             key={layerIndex}
+            style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: gridRef.current?.scrollWidth,
+                height: gridRef.current?.scrollHeight,
+                overflow: 'visible',
+                zIndex: layerIndex,
+                opacity: efficientOpacity,
+                pointerEvents: pointerEvents,
+            }}
+
             >
                 {renderedCells}
                 {renderedTokensForLayer}
-            </React.Fragment>
+            </div>
         );
     });
 
@@ -582,10 +595,10 @@ const Grid: React.FC = () => {
             addToken({
                 id: uuidv4(),
                 color: selectedColor,
-                layer: selectedLayer,
                 x: DotX,
                 y: DotY,
                 label: '',
+                layer: selectedLayer,
              });
         }
         else if (tool === 'pan') {
@@ -725,13 +738,6 @@ const Grid: React.FC = () => {
             layerPanelOpen &&
                 <motion.div 
             className='layers-panel' 
-            initial={{ x: 300, opacity: 0, pointerEvents: 'none' }}
-            animate={{ x: 0, opacity: 0.5, pointerEvents: 'auto' }}
-            exit={{ x: 300, opacity: 0, pointerEvents: 'none' }}
-            whileHover={{ 
-                opacity: 1,
-                pointerEvents: 'auto',
-             }}
                 >
                 
                 <div className='layers-panel-header'>
@@ -740,8 +746,10 @@ const Grid: React.FC = () => {
                     disabled={layers.length >= 10}
                     onClick={addLayer}>
                         <LibraryAddIcon />
-                        </button>
+                    </button>
+
                     <button
+                    className='minimize-button'
                      onClick={() => setLayerPanelOpen(false)}
 
                      >
@@ -785,8 +793,19 @@ const Grid: React.FC = () => {
 
 </AnimatePresence>
 </Reorder.Group>
-                
+<Inventory 
+innerRef={inventoryRef} 
+draggingToken={draggingToken} 
+setDraggingToken={setDraggingToken}
+deleteToken={deleteToken}
+gridRef={gridRef}
+addToken={addToken}
+getDotFromCursorPosition={getDotFromCursorPosition}
+selectedLayer={selectedLayer}
+/>
+              
             </motion.div>}
+
 
 
             {/* Grid */}

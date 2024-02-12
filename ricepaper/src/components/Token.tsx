@@ -3,16 +3,19 @@ import { motion } from 'framer-motion';
 import './Token.css';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+
+
+
 interface TokenProps {
   token: any;
   cellSize: number;
-  layerIndex: number;
-  layerOpacity: number;
   getDotFromCursorPosition: (x: number, y: number) => { DotX: number, DotY: number };
-
+  deleteToken: (id: string) => void;
+  inventoryRef: any;
+  setDraggingToken: (token: any) => void;
 }
 
-const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity, getDotFromCursorPosition }) => {
+const Token: React.FC<TokenProps> = ({ token, cellSize, getDotFromCursorPosition, deleteToken, inventoryRef, setDraggingToken }) => {
   const [positions, setPositions] = useState({
     x: token.x * cellSize - cellSize / 2,
     y: token.y * cellSize - cellSize / 2,
@@ -29,9 +32,36 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
   const [renaming, setRenaming] = useState(false);
   const [label, setLabel] = useState(token.label);
   const [labelVisibility, setLabelVisibility] = useState(true);
+  const [overInventory, setOverInventory] = useState(false);
+
+  const isOverInventory = useCallback((x: number, y: number) => {
+    if (!inventoryRef.current) {
+      return false;
+    }
+    const inventoryRect = inventoryRef.current.getBoundingClientRect();
+    
+    const tokenRect = { x, y };
+    if (
+      tokenRect.x > inventoryRect.x &&
+      tokenRect.x < inventoryRect.x + inventoryRect.width &&
+      tokenRect.y > inventoryRect.y &&
+      tokenRect.y < inventoryRect.y + inventoryRect.height
+    ) {
+      return true;
+    }
+    return false;
+  }
+  , [inventoryRef]);
 
   const handleDrag = useCallback((x: number, y: number) => {
+    if (isOverInventory(x, y)) {
+      setOverInventory(true);
+    }
+    else {
+      setOverInventory(false);
+    }
     const { DotX, DotY } = getDotFromCursorPosition(x, y);
+    console.log('dot', DotX, DotY);
     if (previewPositions.x !== DotX * cellSize - cellSize / 2 || 
         previewPositions.y !== DotY * cellSize - cellSize / 2) {
       setPreviewPositions({
@@ -72,14 +102,15 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
   }, [cellSize, positions]);
 
   useEffect(() => {
-    console.log('Token updated:', token.id);
-    console.log('labelvisibility:', labelVisibility);
+    // console.log('Token updated:', token.id);
+    // console.log('labelvisibility:', labelVisibility);
   }
   ), [token, renaming];
 
   return (
     <React.Fragment>
-      {isDragging && (
+      {isDragging &&
+      (
         <>
           <div
             className={`token token-${token.id} preview`}
@@ -94,6 +125,7 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
               width: `${cellSize}px`,
               height: `${cellSize}px`,
               opacity: 0.5,
+              display: overInventory ? 'none' : 'block',
             }}
           ></div>
           {/* SVG Overlay */}
@@ -105,6 +137,7 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
             height: '100%', 
             pointerEvents: 'none',
             zIndex: '100',
+            display: overInventory ? 'none' : 'block',
              }}>
             <line
               x1={startDragPosition.x + cellSize / 2}
@@ -146,21 +179,41 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, layerIndex, layerOpacity
           top: `${positions.y}px`,
           width: `${cellSize}px`,
           height: `${cellSize}px`,
-          opacity: layerOpacity,
           backgroundImage: `url(${token.image})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
+          opacity: overInventory ? 0.5 : 1,
         }}
         drag
         dragMomentum={false}
         layout
+        transition={{
+          duration: 0.2,
+        }}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0}
         onPointerDown={(event) => event.stopPropagation()}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          deleteToken(token.id);
+        }}
+        onDragStart={(event, info) => {
+          setDraggingToken(
+            {
+              id: token.id,
+              x: positions.x,
+              y: positions.y,
+              color: token.color,
+              label: label,
+              image: token.image,
+            }
+          );
+        }}
         onDragEnd={(event, info) =>
           {
             if (isDragging) {
               handleDragEnd(info);
+              setDraggingToken(null);
             }
           }}
         onDrag={(event, info) => {

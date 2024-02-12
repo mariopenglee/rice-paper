@@ -1,0 +1,131 @@
+.token {
+    position: absolute;
+    cursor: grab;
+    border-radius: 50%;
+    box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
+  }
+  
+.inventory-row {
+    display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 1em;
+    height: 3.5em;
+
+    button, button:hover, button:focus {
+        outline: none;
+        background: none;
+        color: black;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font-size: 1em;
+    }
+
+    .delete-all-button{
+        color: darkred;
+    }
+
+
+.token-delete-button, .token-delete-button:hover, .token-delete-button:focus {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    color: darkred;
+ }
+    
+    
+}
+
+.inventory-expand-button{
+    display: flex;
+    flex-direction: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    width: 2em;
+    height: 2em;
+    border: none;
+    color: black;
+    background: none;
+    outline: none;
+}
+
+
+.inventory-row.expanded {
+    height: 10em;
+}
+
+.inventory-header{
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    width: 2em;
+    height: 100%;
+    color: black;
+}
+.inventory-grid-container {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow: auto;
+    width: 100%;
+    height: 100%;
+
+  }
+
+.inventory-grid {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 0;
+
+    }
+.inventory-grid.expanded {
+    flex-wrap: wrap;
+}
+
+.inventory-cell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 4em;
+    height: 3.5em;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 0.5em;
+  }
+
+.inventory-cell:hover .token-delete-button {
+    display: inline-block; /* or "flex", depending on your layout */
+}
+
+
+.inventory-cell-token {
+    cursor: grab;
+    border-radius: 50%;
+    width: 2em;
+    height: 2em;
+    box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
+  }
+
+.inventory-cell-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.8);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+  }
