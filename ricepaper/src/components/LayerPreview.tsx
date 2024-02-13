@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -14,8 +14,8 @@ interface LayerPreviewProps {
     selected: boolean;
     selectLayer: (id: string) => void;
     removeLayer: (id: string) => void;
-    updateLayerOpacity: (index: number, opacity: number) => void;
-    toggleLayerVisibility: (index: number) => void;
+    updateLayerOpacity: (id: string, opacity: number) => void;
+    toggleLayerVisibility: (id: string) => void;
     renderLayerPreview: (layer: any) => React.ReactNode;
 }
 

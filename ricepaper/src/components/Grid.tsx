@@ -1,6 +1,6 @@
 // src/components/Grid.tsx
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './Grid.css';
 import Token from './Token';
 import Cell from './Cell';
@@ -50,12 +50,11 @@ const Grid: React.FC = () => {
     const initialGridSize = 100; // Initial grid size
     const cellSize = 30; // Assuming each cell
     const initialColor = '#FFF8DC'; // Default color: rice paper
-    const [gridSize, setGridSize] = useState(initialGridSize);
+    const [gridSize] = useState(initialGridSize);
     const [painting, setPainting] = useState(false);
     const [erasing, setErasing] = useState(false);
     const [selectedColor, setSelectedColor] = useState('black');
     const [tool, setTool] = useState('paintbrush'); // 'paintbrush' or 'pan'
-    const [displayBorders, setDisplayBorders] = useState(false); // Whether to display borders around cells
     const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid container
     const [layerPanelOpen, setLayerPanelOpen] = useState(false); // Whether the layer panel is open
     const [layers, setLayers] = useState<Array<LayerData>>([{ 
@@ -95,7 +94,7 @@ const Grid: React.FC = () => {
 
 
 
-    const floodFill = (x, y, targetColor) => {
+    const floodFill = (x: number, y: number, targetColor: string) => {
         // Check if the cell is out of bounds or already the fill color
         if ( x < 0 || x >= gridSize || y < 0 || y >= gridSize || layers[lookupLayerIndex(selectedLayer)].cells[`${x}-${y}`]?.color === selectedColor) {
             return;
@@ -115,12 +114,14 @@ const Grid: React.FC = () => {
     };
     
     // function to check if flood filling this empty cell will reach the border
-    const willFloodFillReachBorder = (x, y, targetColor) => {
-        const visited = {};
-        const queue = [];
+    const willFloodFillReachBorder = (x: number, y: number, targetColor: string) => {
+        const visited: Record<string, boolean> = {};
+        const queue: [number, number][] = [];
         queue.push([x, y]);
         while (queue.length > 0) {
-            const [i, j] = queue.shift();
+            const point = queue.shift();
+            if (!point) continue;
+            const [i, j] = point;
             if (i < 0 || i >= gridSize || j < 0 || j >= gridSize) {
                 return true;
             }
@@ -131,7 +132,6 @@ const Grid: React.FC = () => {
         }
         return false;
     };
-
  
 
 
@@ -186,7 +186,7 @@ const Grid: React.FC = () => {
     }
 
 
-    const calculateLayerBounds = (layer) => {
+    const calculateLayerBounds = (layer: LayerData) => {
         let minX = gridSize, maxX = 0, minY = gridSize, maxY = 0;
         Object.keys(layer.cells).forEach(key => {
             const [gridX, gridY] = key.split('-').map(Number);
@@ -209,7 +209,7 @@ const Grid: React.FC = () => {
         const scale = Math.min(previewSize / layerWidth, previewSize / layerHeight);
         const cells = Object.entries(layer.cells).map(([key, value]) => {
             const [gridX, gridY] = key.split('-').map(Number);
-            const cellStyle = {
+            const cellStyle: React.CSSProperties = {
                 position: 'absolute',
                 left: `${(gridX - bounds.minX) * scale}px`,
                 top: `${(gridY - bounds.minY) * scale}px`,
@@ -291,7 +291,7 @@ const Grid: React.FC = () => {
 
 
 
-    const getCellFromCursorPosition = (x, y) => {
+    const getCellFromCursorPosition = (x: number, y: number) => {
         const {x: adjustedX, y: adjustedY} = accountForScroll(x, y);
         
         const gridX = Math.floor(adjustedX / cellSize);
@@ -299,16 +299,16 @@ const Grid: React.FC = () => {
         return { gridX, gridY };
     };
     
-    const accountForScroll = (x, y) => {
+    const accountForScroll = (x: number, y: number) => {
         return {
-            x: x + gridRef.current.scrollLeft,
-            y: y + gridRef.current.scrollTop,
+            x: gridRef.current ? x + gridRef.current.scrollLeft : x,
+            y: gridRef.current ? y + gridRef.current.scrollTop : y,
         };
     }
 
 
 
-    const getDotFromCursorPosition = useCallback((x, y) => {
+    const getDotFromCursorPosition = useCallback((x: number, y: number) => {
         const { x: adjustedX, y: adjustedY } = accountForScroll(x, y);
         const DotX = Math.round(adjustedX / cellSize);
         const DotY = Math.round(adjustedY / cellSize);
@@ -497,10 +497,6 @@ const Grid: React.FC = () => {
                 paintCell(gridX, gridY);
             }
         }
-        else if (tool === 'erase' && isDrawingRectangle) {
-            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
-            updateRectanglePreview(rectangleStart.x, rectangleStart.y, gridX, gridY);
-        }
         else if (tool === 'erase' && erasing) {
             const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             const cellKey = `${gridX}-${gridY}`;
@@ -509,7 +505,7 @@ const Grid: React.FC = () => {
             }
         }
     };
-    const handleMouseUp = (event) => {
+    const handleMouseUp = (event: React.MouseEvent) => {
 
         if (isDrawingRectangle) {
             const { clientX, clientY } = event;
@@ -561,7 +557,7 @@ const Grid: React.FC = () => {
     };
     
 
-    const handleMouseDown = (event) => {
+    const handleMouseDown = (event: React.MouseEvent) => {
         console.log('mousedown');
 
         if (selectedLayer === 'none'){
@@ -601,8 +597,6 @@ const Grid: React.FC = () => {
                 layer: selectedLayer,
              });
         }
-        else if (tool === 'pan') {
-        }
         else if (tool === 'erase') {
             const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY);
             
@@ -636,6 +630,7 @@ const Grid: React.FC = () => {
         
         
     };
+    /*
     const handleMouseDownPanning = (event: React.MouseEvent) => {
         if (tool === 'pan' && gridRef.current) {
             event.preventDefault(); // Prevent default action
@@ -655,6 +650,7 @@ const Grid: React.FC = () => {
 
         }
     };
+    */
 
     
     // Adjust the grid size on window resize
@@ -773,7 +769,7 @@ const Grid: React.FC = () => {
 
                 >
                     <AnimatePresence>
-                {layerOrder.map((layerId, index) => {
+                {layerOrder.map((layerId) => {
                 const layer = layers.find(layer => layer.id === layerId);
                 if (!layer) return null; // Handle if layer is not found
                 return (

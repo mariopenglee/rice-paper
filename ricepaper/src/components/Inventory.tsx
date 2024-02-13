@@ -21,26 +21,34 @@ interface InventoryProps {
 }
 
 
+interface TokenType {
+    id: string;
+    x: number;
+    y: number;
+    color: string;
+    layer: string;
+    label: string;
+}
+
 export default function Inventory({ innerRef, draggingToken, setDraggingToken, deleteToken, gridRef, addToken, getDotFromCursorPosition, selectedLayer }: InventoryProps) {
-    const [inventoryTokens, setInventoryTokens] = useState([]);
+    const [inventoryTokens, setInventoryTokens] = useState<TokenType[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
-    const [isRenaming, setIsRenaming] = useState(false);
     const [previewPositions, setPreviewPositions] = useState({ x: 0, y: 0 });
     const [overInventory, setOverInventory] = useState(false);
-    const [token, setToken] = useState(null);
+    const [token, setToken] = useState<TokenType | null>(null);
     const [isOnGrid, setIsOnGrid] = useState(false);
     const cellSize = 30;
 
-    const moveTokenToInventory = (token: any) => {
+    const moveTokenToInventory = (token: TokenType) => {
         console.log('moving token to inventory', token);
         setInventoryTokens([...inventoryTokens, token]);
-        deleteToken(token.id);
+        deleteToken(token['id']);
     };
 
     const removeTokenFromInventory = (id: string) => {
         console.log('removing token from inventory', id);
-        setInventoryTokens(inventoryTokens.filter((token) => token.id !== id));
+        setInventoryTokens(inventoryTokens.filter((token) => token['id'] !== id));
     }
 
     const checkIfOnGrid = (x: number, y: number) => {
@@ -80,30 +88,30 @@ export default function Inventory({ innerRef, draggingToken, setDraggingToken, d
         }
     }
 
-    const handleDragEnd = (x, y) => {
+    const handleDragEnd = (x: number, y: number) => {
         if (!overInventory && isOnGrid && token) {
             const { DotX, DotY } = getDotFromCursorPosition(x, y);
             console.log('dropping token on grid');
             addToken({
-                id: token.id,
+                id: token['id'],
                 x: DotX,
                 y: DotY,
-                color: token.color,
-                label: token.label,
+                color: token['color'],
+                label: token['label'],
                 layer: selectedLayer,
                 
             });
-            removeTokenFromInventory(token.id);
+            removeTokenFromInventory(token['id']);
         }
     }
 
 
     const renderInventoryGrid = () => {
-        const grid = inventoryTokens.map((token, index) => {
+        const grid = inventoryTokens.map((token) => {
             console.log('rendering token', token);
             return (
                 <Reorder.Item
-                    key={token.id}
+                    key={token['id']}
                     value={token}
                     className="inventory-cell"
                     drag
@@ -114,13 +122,13 @@ export default function Inventory({ innerRef, draggingToken, setDraggingToken, d
                         setDraggingToken(token);
                     }}
 
-                    onDrag={(event, info) => {
+                    onDrag={(_, info) => {
                         handleDrag(info.point.x, info.point.y);
                         console.log('dragging token', token);
                     }
                     }
 
-                    onDragEnd={(event, info) => {
+                    onDragEnd={(_, info) => {
                         handleDragEnd(info.point.x, info.point.y);
                         setIsDragging(false);
                         setPreviewPositions({ x: 0, y: 0 });
@@ -131,7 +139,7 @@ export default function Inventory({ innerRef, draggingToken, setDraggingToken, d
                 >
                     <button
                     className="token-delete-button"
-                    onClick={() => removeTokenFromInventory(token.id)}
+                    onClick={() => removeTokenFromInventory(token['id'])}
                     >
                         <DeleteIcon />
                     </button>
@@ -139,13 +147,13 @@ export default function Inventory({ innerRef, draggingToken, setDraggingToken, d
                     className="inventory-cell-token"
                     style={{ 
                         pointerEvents: 'none',
-                        backgroundColor: `${token.color}`,
+                        backgroundColor: `${token['color']}`,
                      }}
                     
 
                     >
                     </motion.div>
-                    <div className="inventory-cell-label">{token.label}</div>
+                    <div className="inventory-cell-label">{token['label']}</div>
                 </Reorder.Item>
             );
         });
@@ -210,7 +218,7 @@ export default function Inventory({ innerRef, draggingToken, setDraggingToken, d
         <motion.div
         className={`inventory-row ${isExpanded ? 'expanded' : ''}`}
         ref={innerRef}
-        onPointerUp={(event) => {
+        onPointerUp={() => {
             if(draggingToken) {
                 console.log('leaving token in inventory', draggingToken);
                 if (isDragging) {

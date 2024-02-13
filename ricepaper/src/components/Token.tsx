@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import './Token.css';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -15,7 +15,7 @@ interface TokenProps {
   setDraggingToken: (token: any) => void;
 }
 
-const Token: React.FC<TokenProps> = ({ token, cellSize, getDotFromCursorPosition, deleteToken, inventoryRef, setDraggingToken }) => {
+export default function Token({ token, cellSize, getDotFromCursorPosition, deleteToken, inventoryRef, setDraggingToken }: TokenProps) {
   const [positions, setPositions] = useState({
     x: token.x * cellSize - cellSize / 2,
     y: token.y * cellSize - cellSize / 2,
@@ -197,7 +197,7 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, getDotFromCursorPosition
           event.preventDefault();
           deleteToken(token.id);
         }}
-        onDragStart={(event, info) => {
+        onDragStart={() => {
           setDraggingToken(
             {
               id: token.id,
@@ -209,14 +209,14 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, getDotFromCursorPosition
             }
           );
         }}
-        onDragEnd={(event, info) =>
+        onDragEnd={(_, info) =>
           {
             if (isDragging) {
               handleDragEnd(info);
               setDraggingToken(null);
             }
           }}
-        onDrag={(event, info) => {
+        onDrag={(_, info) => {
           // Prevent dragging if renaming is in progress
           if (!renaming) {
             handleDrag(info.point.x, info.point.y);
@@ -273,4 +273,4 @@ const Token: React.FC<TokenProps> = ({ token, cellSize, getDotFromCursorPosition
   );
 };
 
-export default memo(Token);
+
