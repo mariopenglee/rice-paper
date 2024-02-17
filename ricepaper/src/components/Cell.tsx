@@ -5,10 +5,11 @@ interface CellProps {
     y: number;
     size: number;
     color: string;
+    opacity?: number;
 }
 
 
-const Cell = ({ x, y, size, color }: CellProps) => {
+const Cell = ({ x, y, size, color, opacity = 1 }: CellProps) => {
     
     const style = {
         left: x,
@@ -16,9 +17,11 @@ const Cell = ({ x, y, size, color }: CellProps) => {
         width: size,
         height: size,
         backgroundColor: color,
+        opacity: opacity,
     };
 
     useState(() => {
+        console.log('Cell rendered');
     }
     );
 

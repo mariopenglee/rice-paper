@@ -3,36 +3,40 @@ import { motion } from 'framer-motion';
 import './Token.css';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-
+import { roundToNearestDot, cellSize } from '../utils';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  tokenMoved,
+  tokenRemoved,
+  tokenDraggingStarted,
+  tokenLabelUpdated,
+  tokenLabelVisibilityToggled,
+  selectSelectedTokens,
+} from '../redux/tokens/tokensSlice';
 
 
 interface TokenProps {
   token: any;
-  cellSize: number;
-  getDotFromCursorPosition: (x: number, y: number) => { DotX: number, DotY: number };
-  deleteToken: (id: string) => void;
   inventoryRef: any;
-  setDraggingToken: (token: any) => void;
+  gridRef: any;
 }
 
-export default function Token({ token, cellSize, getDotFromCursorPosition, deleteToken, inventoryRef, setDraggingToken }: TokenProps) {
-  const [positions, setPositions] = useState({
-    x: token.x * cellSize - cellSize / 2,
-    y: token.y * cellSize - cellSize / 2,
-  });
+const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
 
   const [previewPositions, setPreviewPositions] = useState({
-    x: token.x * cellSize - cellSize / 2,
-    y: token.y * cellSize - cellSize / 2,
+    x: token.x,
+    y: token.y,
   });
 
   const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [distanceInCells, setDistanceInCells] = useState(0); 
   const [renaming, setRenaming] = useState(false);
-  const [label, setLabel] = useState(token.label);
-  const [labelVisibility, setLabelVisibility] = useState(true);
   const [overInventory, setOverInventory] = useState(false);
+
+  const dispatch = useDispatch();
+  const selectedTokens = useSelector(selectSelectedTokens);
+  const selected = selectedTokens.includes(token);
 
   const isOverInventory = useCallback((x: number, y: number) => {
     if (!inventoryRef.current) {
@@ -53,29 +57,41 @@ export default function Token({ token, cellSize, getDotFromCursorPosition, delet
   }
   , [inventoryRef]);
 
-  const handleDrag = useCallback((x: number, y: number) => {
+  const handleDragStart = () => {
+    setDistanceInCells(0);
+    setIsDragging(true);
+    setStartDragPosition({
+      x: token.x,
+      y: token.y,
+    });
+    if (selected) {
+      console.log('Selected tokens:', selectedTokens);
+      dispatch(tokenDraggingStarted(selectedTokens));
+    }
+    else {
+      dispatch(tokenDraggingStarted([token]));
+    }
+  };
+
+  const handleDrag = (x: number, y: number) => {
     if (isOverInventory(x, y)) {
       setOverInventory(true);
     }
     else {
       setOverInventory(false);
     }
-    const { DotX, DotY } = getDotFromCursorPosition(x, y);
-    console.log('dot', DotX, DotY);
-    if (previewPositions.x !== DotX * cellSize - cellSize / 2 || 
-        previewPositions.y !== DotY * cellSize - cellSize / 2) {
-      setPreviewPositions({
-        x: DotX * cellSize - cellSize / 2,
-        y: DotY * cellSize - cellSize / 2,
-      });
-    }
-    if (!isDragging) {
-      setIsDragging(true);
-      setStartDragPosition({ x: positions.x, y: positions.y });
-    }
+    const { x : DotX, y: DotY } = roundToNearestDot(x, y, gridRef);
+    if (previewPositions.x !== DotX ||
+      previewPositions.y !== DotY) {
+    setPreviewPositions({
+      x: DotX,
+      y: DotY,
+    });
+  }
+
     const { x: deltaX, y: deltaY } = {
-      x: DotX * cellSize - cellSize / 2 - startDragPosition.x,
-      y: DotY * cellSize - cellSize / 2 - startDragPosition.y,
+      x: previewPositions.x - startDragPosition.x,
+      y: previewPositions.y - startDragPosition.y,
     };
     const distance = Math.sqrt(deltaX ** 2 + deltaY ** 2) / cellSize;
     
@@ -83,29 +99,46 @@ export default function Token({ token, cellSize, getDotFromCursorPosition, delet
       setDistanceInCells(distance);
     }
 
-  }, [cellSize, getDotFromCursorPosition, isDragging, previewPositions, positions]);
+  };
 
-  const handleDragEnd = useCallback((info: { offset: { x: number; y: number } }) => {
+  const handleDragEnd = (info: any) => {
     setDistanceInCells(0);
-    const deltaX = Math.round(info.offset.x / cellSize);
-    const deltaY = Math.round(info.offset.y / cellSize);
-    setPositions({
-      x: positions.x + deltaX * cellSize,
-      y: positions.y + deltaY * cellSize,
-    });
-    setPreviewPositions({
-      x: positions.x,
-      y: positions.y,
-    });
     setIsDragging(false);
-    
-  }, [cellSize, positions]);
+    if (selected) {
+      if (isOverInventory(info.point.x, info.point.y)) {
+        // If token is over inventory, remove it
+        selectedTokens.forEach((SelectedToken: any) => {
+          dispatch(tokenRemoved({ id: SelectedToken.id }));
+        });
+      }
+      else {
+        selectedTokens.forEach((SelectedToken: any) => {
+          const { x: DotX, y: DotY } = roundToNearestDot(SelectedToken.x + info.point.x - startDragPosition.x, SelectedToken.y + info.point.y - startDragPosition.y, gridRef);
+          dispatch(tokenMoved({ id: SelectedToken.id, x: DotX, y: DotY }));
+        });
+      }
+    }
+    else {
+      if (isOverInventory(info.point.x, info.point.y)) {
+        // If token is over inventory, remove it
+        dispatch(tokenRemoved({ id: token.id }));
+      }
+      else {
+          dispatch(tokenMoved({ id: token.id, x: previewPositions.x, y: previewPositions.y }));
+      }
+    }
+    dispatch(tokenDraggingStarted([]));
+    setPreviewPositions({
+      x: token.x,
+      y: token.y,
+    });
+  };
 
   useEffect(() => {
-    // console.log('Token updated:', token.id);
+    console.log('Token updated:', token.id);
     // console.log('labelvisibility:', labelVisibility);
   }
-  ), [token, renaming];
+  ), [token];
 
   return (
     <React.Fragment>
@@ -175,14 +208,16 @@ export default function Token({ token, cellSize, getDotFromCursorPosition, delet
         className={`token token-${token.id}`}
         style={{
           background: token.color,
-          left: `${positions.x}px`,
-          top: `${positions.y}px`,
+          left: `${token.x}px`,
+          top: `${token.y}px`,
           width: `${cellSize}px`,
           height: `${cellSize}px`,
           backgroundImage: `url(${token.image})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: overInventory ? 0.5 : 1,
+          opacity: overInventory ? 0.5 : selected ? 0.8 : 1,
+          border: selected ? '2px dashed lightgray' : 'none',
+          
         }}
         drag
         dragMomentum={false}
@@ -195,32 +230,13 @@ export default function Token({ token, cellSize, getDotFromCursorPosition, delet
         onPointerDown={(event) => event.stopPropagation()}
         onContextMenu={(event) => {
           event.preventDefault();
-          deleteToken(token.id);
+          dispatch(tokenRemoved({ id: token.id }));
         }}
-        onDragStart={() => {
-          setDraggingToken(
-            {
-              id: token.id,
-              x: positions.x,
-              y: positions.y,
-              color: token.color,
-              label: label,
-              image: token.image,
-            }
-          );
-        }}
-        onDragEnd={(_, info) =>
-          {
-            if (isDragging) {
-              handleDragEnd(info);
-              setDraggingToken(null);
-            }
-          }}
+        onDragStart={() => handleDragStart()}
+        onDragEnd={(_, info) => handleDragEnd(info)}
         onDrag={(_, info) => {
           // Prevent dragging if renaming is in progress
-          if (!renaming) {
             handleDrag(info.point.x, info.point.y);
-          }
         }}
         onDoubleClick={() => setRenaming(true)}
       >
@@ -234,35 +250,40 @@ export default function Token({ token, cellSize, getDotFromCursorPosition, delet
             <>
               <input
                 className={'token-label-input'}
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                onBlur={() => setRenaming(false)}
+                value={token.label}
+                onChange={(e) => dispatch(tokenLabelUpdated({ id: token.id, label: e.target.value })) }
+                onBlur={() => 
+                  {
+                    setRenaming(false);
+                    dispatch(tokenLabelUpdated({ id: token.id, label: token.label }));
+                  }
+                }
                 autoFocus
                 autoSave='true'
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     setRenaming(false);
+                    dispatch(tokenLabelUpdated({ id: token.id, label: token.label }));
+                    
                   }
                 }}
               />
               <button
-                onPointerDown={(e) => {
-                  e.preventDefault(); // Prevents the input from losing focus
-                  setRenaming(false);
-                  setLabelVisibility(!labelVisibility);
+                onPointerDown={() => {
+                  dispatch(tokenLabelVisibilityToggled({ id: token.id }));
                 }}
                 className={'visibility-button'}
               >
-                {labelVisibility ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                {token.labelVisibility ? <VisibilityIcon /> : <VisibilityOffIcon />}
               </button>
             </>
           ) : (
-            label && (
+            token.label && (
               <span
                 className={'token-label'}
                 onClick={() => setRenaming(true)}
               >
-                {labelVisibility ? label : '...'}
+                {token.labelVisibility ? token.label : '...'}
               </span>
             )
           )}
@@ -271,6 +292,22 @@ export default function Token({ token, cellSize, getDotFromCursorPosition, delet
       </motion.div>
     </React.Fragment>
   );
-};
+}
 
 
+const MemoizedToken = React.memo(Token, (prevProps, nextProps) => {
+  const shouldRerender = prevProps.token.x !== nextProps.token.x ||
+    prevProps.token.y !== nextProps.token.y ||
+    prevProps.token.color !== nextProps.token.color ||
+    prevProps.token.image !== nextProps.token.image ||
+    prevProps.token.label !== nextProps.token.label ||
+    prevProps.token.labelVisibility !== nextProps.token.labelVisibility ||
+    prevProps.inventoryRef !== nextProps.inventoryRef ||
+    prevProps.gridRef !== nextProps.gridRef;
+    
+  if (shouldRerender) {
+    console.log('Re-rendering due to change in props:', { prevProps, nextProps });
+  }
+  return !shouldRerender;
+});
+export default MemoizedToken;
