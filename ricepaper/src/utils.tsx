@@ -1,4 +1,6 @@
 export const cellSize = 30;
+export const gridWidth = 100;
+export const gridHeight = 100;
 
 export const roundToNearestDot = (x: number, y: number, gridRef: any) => {
     const { DotX, DotY } = getDotFromCursorPosition(x, y, gridRef);

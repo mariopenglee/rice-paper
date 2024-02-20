@@ -17,9 +17,7 @@ const tokensSlice = createSlice({
     initialState,
     reducers: {
         tokenAdded: (state, action) => {
-            console.log('tokenAdded');
-            const { token } = action.payload;
-            state.tokens.push(token);
+            state.tokens.push(action.payload);
         },
         tokenRemoved: (state, action) => {
             const { id } = action.payload;
@@ -35,6 +33,30 @@ const tokensSlice = createSlice({
                 ...token,
                 x: action.payload.x,
                 y: action.payload.y,
+                };
+            }
+            return token;
+            });
+        },
+        selectedTokensMoved: (state, action) => {
+            state.tokens = state.tokens.map(token => {
+            if (state.selectedTokens.some(selectedToken => selectedToken.id === token.id)) {
+                return {
+                ...token,
+                x: token.x + action.payload.x,
+                y: token.y + action.payload.y,
+                };
+            }
+            return token;
+            });
+        },
+        selectedTokensResized: (state, action) => {
+            state.tokens = state.tokens.map(token => {
+            if (state.selectedTokens.some(selectedToken => selectedToken.id === token.id)) {
+                return {
+                ...token,
+                width: action.payload.width,
+                height: action.payload.height,
                 };
             }
             return token;
@@ -56,7 +78,7 @@ const tokensSlice = createSlice({
             if (token.id === action.payload.id) {
                 return {
                 ...token,
-                labelVisible: !token.labelVisible,
+                labelVisibility: action.payload.newVisibility ?  action.payload.newVisibility : !token.labelVisibility,
                 };
             }
             return token;
@@ -65,11 +87,34 @@ const tokensSlice = createSlice({
         tokenDraggingStarted: (state, action) => {
             state.draggingTokens = action.payload;
         },
+        tokenResized: (state, action) => {
+            state.tokens = state.tokens.map(token => {
+            if (token.id === action.payload.id) {
+
+                return {
+                ...token,
+                width: action.payload.width,
+                height: action.payload.height,
+                };
+            }
+            return token;
+            });
+        }
     },
 
 });
 
-export const { tokenAdded, tokenRemoved, tokenSelected, tokenMoved, tokenLabelUpdated, tokenLabelVisibilityToggled, tokenDraggingStarted } = tokensSlice.actions;
+export const { 
+    tokenAdded, 
+    tokenRemoved, 
+    tokenSelected, 
+    tokenMoved, 
+    tokenLabelUpdated, 
+    tokenLabelVisibilityToggled, 
+    selectedTokensMoved,
+    tokenResized,
+    selectedTokensResized,
+    tokenDraggingStarted } = tokensSlice.actions;
 
 export default tokensSlice.reducer;
 

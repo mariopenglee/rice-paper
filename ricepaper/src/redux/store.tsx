@@ -2,14 +2,20 @@
 import layersReducer from './layers/layersSlice';
 import tokensReducer from './tokens/tokensSlice';
 import inventoryReducer from './inventory/inventorySlice';
+import currentToolReducer from './currentTool/currentToolSlice';
+import colorsReducer from './colors/colorsSlice';
 import { configureStore } from '@reduxjs/toolkit'
 
 const store = configureStore({
   reducer: {
     layers: layersReducer,
     tokens: tokensReducer,
-    inventory: inventoryReducer
-  }
+    inventory: inventoryReducer,
+    currentTool: currentToolReducer,
+    colors: colorsReducer
+
+  },
+  
 })
 
 
@@ -24,7 +30,9 @@ export interface TokenType {
   label: string;
   x: number;
   y: number;
+  width: number;
+  height: number;
   color: string;
-  labelVisible: boolean;
+  labelVisibility: boolean;
   layer: string;
 }

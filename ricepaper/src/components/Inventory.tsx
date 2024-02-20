@@ -22,7 +22,6 @@ import { TokenType } from '../redux/store';
 interface InventoryProps {
     innerRef: any;
     gridRef: any;
-    selectedColor: string;
 }
 import {
     inventoryItemAdded,
@@ -36,7 +35,11 @@ import {
     selectSelectedLayer,
 } from '../redux/layers/layersSlice';
 
-export default function Inventory({ innerRef, gridRef, selectedColor }: InventoryProps) {
+import { 
+    selectSelectedColor,
+ } from '../redux/colors/colorsSlice';
+
+export default function Inventory({ innerRef, gridRef }: InventoryProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [previewPositions, setPreviewPositions] = useState({ x: 0, y: 0 });
@@ -47,6 +50,7 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
 
     const dispatch = useDispatch();
     const selectedLayer = useSelector(selectSelectedLayer);
+    const selectedColor = useSelector(selectSelectedColor);
     const draggingTokens = useSelector(selectDraggingTokens);
     const inventoryItems = useSelector(selectInventoryItems);
 
@@ -109,9 +113,8 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
         if (!overInventory && isOnGrid && token) {
             const { x: DotX, y: DotY } = roundToNearestDot(x, y, gridRef);
             console.log('dropping token on grid');
-            
             dispatch(tokenAdded({
-                token : {
+                
                 id: token['id'],
                 x: DotX,
                 y: DotY,
@@ -119,7 +122,9 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
                 label: token['label'],
                 layer: selectedLayer,
                 labelVisibility: true,
-                }
+                width: token['width'],
+                height: token['height'],
+                
             }));
 
             removeTokenFromInventory(token['id']);
@@ -141,7 +146,7 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
                  className="inventory-cell-token-preview"
                  whileHover={
                     {
-                        backgroundColor: selectedColor,
+                        backgroundColor: selectedColor.color,
 
                     }
                  }
@@ -150,9 +155,12 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
                         id: uuidv4(),
                         x: 0,
                         y: 0,
-                        color: selectedColor,
+                        color: selectedColor.color,
                         label: ``,
                         layer: selectedLayer,
+                        labelVisibility: true,
+                        width: cellSize,
+                        height: cellSize,
                     };
                     dispatch(inventoryItemAdded(newToken));
                 }}
@@ -210,6 +218,9 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
                     style={{ 
                         pointerEvents: 'none',
                         backgroundColor: `${token['color']}`,
+                        // capture the ratio of the token's width and height to the cell size
+                        aspectRatio: `${token['width']}/${token['height']}`,
+                        
                      }}
                     
 
@@ -271,6 +282,9 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
     , []);
 
     const renderPreview = () => {
+        if (!gridRef.current || !token) {
+            return null;
+        }
         const preview = (
             <div 
         className={`preview-container`}
@@ -292,8 +306,8 @@ export default function Inventory({ innerRef, gridRef, selectedColor }: Inventor
               background: 'none',
               left: `${previewPositions.x}px`,
               top: `${previewPositions.y}px`,
-              width: `${cellSize}px`,
-              height: `${cellSize}px`,
+              width: `${token['width']}px`,
+              height: `${token['height']}px`,
               opacity: 0.5,
             }}
           ></div>

@@ -35,12 +35,10 @@ const layersSlice = createSlice({
             state.layers.push(layer);
         },
         layerRemoved: (state, action) => {
-            const { id } = action.payload;
-            state.layers = state.layers.filter(layer => layer.id !== id);
+            state.layers = state.layers.filter(layer => layer.id !== action.payload);
         },
         layerSelected: (state, action) => {
-            const { id } = action.payload;
-            state.selectedLayer = id;
+            state.selectedLayer = action.payload;
         },
         layerOpacityUpdated: (state, action) => {
             const { id, opacity } = action.payload;
@@ -57,8 +55,7 @@ const layersSlice = createSlice({
             }
         },
         layerVisibilityToggled: (state, action) => {
-            const { id } = action.payload;
-            const layer = state.layers.find(layer => layer.id === id);
+            const layer = state.layers.find(layer => layer.id === action.payload);
             if (layer) {
                 layer.visibility = !layer.visibility;
             }
@@ -71,11 +68,8 @@ const layersSlice = createSlice({
             }
         },
         layerCellsPainted: (state, action) => {
-            console.log('layerCellsPainted');
-            console.log(action.payload);
             const { id, cells, color } = action.payload;
             const layer = state.layers.find(layer => layer.id === id);
-            console.log('painting cells', cells, 'on layer', id, 'with color', color);
             if (layer) {
                 cells.forEach((cell: string) => {
                     layer.cells[cell] = color;

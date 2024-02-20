@@ -1,3 +1,6 @@
+
+import React from 'react';
+
 interface DotProps {
     x: number;
     y: number;
@@ -5,7 +8,6 @@ interface DotProps {
 
 }
 const Dot = ({ x, y, size }: DotProps) => {
-
 
     return (
 
@@ -28,4 +30,12 @@ const Dot = ({ x, y, size }: DotProps) => {
      );
 };
 
-export default Dot;
+const MemoizedDot = React.memo(Dot, (prevProps, nextProps) => {
+    const shouldRerender = prevProps.x !== nextProps.x || prevProps.y !== nextProps.y || prevProps.size !== nextProps.size;
+
+    if (shouldRerender) {
+      console.log('Re-rendering due to change in props:', { prevProps, nextProps });
+    }
+    return !shouldRerender;
+  });
+  export default MemoizedDot;

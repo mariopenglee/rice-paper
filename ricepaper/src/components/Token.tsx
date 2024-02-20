@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import './Token.css';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -11,8 +11,16 @@ import {
   tokenDraggingStarted,
   tokenLabelUpdated,
   tokenLabelVisibilityToggled,
+  tokenSelected,
+  tokenResized,
+  selectedTokensMoved,
+  selectedTokensResized,
   selectSelectedTokens,
 } from '../redux/tokens/tokensSlice';
+
+import {
+  selectPressingShift,
+} from '../redux/currentTool/currentToolSlice';
 
 
 interface TokenProps {
@@ -30,13 +38,15 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
 
   const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  
   const [distanceInCells, setDistanceInCells] = useState(0); 
-  const [renaming, setRenaming] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
   const [overInventory, setOverInventory] = useState(false);
 
   const dispatch = useDispatch();
   const selectedTokens = useSelector(selectSelectedTokens);
-  const selected = selectedTokens.includes(token);
+  // create the selected boolean, which is true if the tokenid is in the selectedTokens array
+  const selected = selectedTokens.some((selectedToken: any) => selectedToken.id === token.id);
 
   const isOverInventory = useCallback((x: number, y: number) => {
     if (!inventoryRef.current) {
@@ -58,14 +68,21 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
   , [inventoryRef]);
 
   const handleDragStart = () => {
+    if (isRenaming || isResizing) {
+      return; //
+    }
+    setPreviewSize({
+      width: token.width,
+      height: token.height,
+    })
     setDistanceInCells(0);
     setIsDragging(true);
     setStartDragPosition({
-      x: token.x,
-      y: token.y,
+      x: token.x + token.width / 2,
+      y: token.y + token.height / 2,
     });
     if (selected) {
-      console.log('Selected tokens:', selectedTokens);
+
       dispatch(tokenDraggingStarted(selectedTokens));
     }
     else {
@@ -74,13 +91,19 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
   };
 
   const handleDrag = (x: number, y: number) => {
+    if (isRenaming || isResizing) {
+      return; //
+    }
     if (isOverInventory(x, y)) {
       setOverInventory(true);
     }
     else {
       setOverInventory(false);
     }
-    const { x : DotX, y: DotY } = roundToNearestDot(x, y, gridRef);
+    const { x : DotX, y: DotY } = roundToNearestDot(
+      x - token.width / 2,
+      y - token.height / 2, 
+      gridRef);
     if (previewPositions.x !== DotX ||
       previewPositions.y !== DotY) {
     setPreviewPositions({
@@ -90,8 +113,8 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
   }
 
     const { x: deltaX, y: deltaY } = {
-      x: previewPositions.x - startDragPosition.x,
-      y: previewPositions.y - startDragPosition.y,
+      x: DotX - startDragPosition.x + token.width / 2,
+      y: DotY - startDragPosition.y + token.height / 2,
     };
     const distance = Math.sqrt(deltaX ** 2 + deltaY ** 2) / cellSize;
     
@@ -102,6 +125,9 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
   };
 
   const handleDragEnd = (info: any) => {
+    if (isRenaming || isResizing) {
+      return; //
+    }
     setDistanceInCells(0);
     setIsDragging(false);
     if (selected) {
@@ -109,13 +135,16 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
         // If token is over inventory, remove it
         selectedTokens.forEach((SelectedToken: any) => {
           dispatch(tokenRemoved({ id: SelectedToken.id }));
+          tokenSelected([]);
+          
         });
       }
       else {
-        selectedTokens.forEach((SelectedToken: any) => {
-          const { x: DotX, y: DotY } = roundToNearestDot(SelectedToken.x + info.point.x - startDragPosition.x, SelectedToken.y + info.point.y - startDragPosition.y, gridRef);
-          dispatch(tokenMoved({ id: SelectedToken.id, x: DotX, y: DotY }));
-        });
+        const { x: deltaX, y: deltaY } = {
+          x: previewPositions.x - startDragPosition.x + token.width / 2,
+          y: previewPositions.y - startDragPosition.y + token.height / 2,
+        };
+          dispatch(selectedTokensMoved({ x: deltaX, y: deltaY }));
       }
     }
     else {
@@ -124,25 +153,105 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
         dispatch(tokenRemoved({ id: token.id }));
       }
       else {
-          dispatch(tokenMoved({ id: token.id, x: previewPositions.x, y: previewPositions.y }));
+        dispatch(tokenMoved({ id: token.id, x: previewPositions.x, y: previewPositions.y }));
       }
     }
     dispatch(tokenDraggingStarted([]));
-    setPreviewPositions({
-      x: token.x,
-      y: token.y,
-    });
   };
 
-  useEffect(() => {
-    console.log('Token updated:', token.id);
-    // console.log('labelvisibility:', labelVisibility);
-  }
-  ), [token];
+  // renaming
+
+  const handleLabelUpdate = (newLabel: string) => {
+    // Dispatch an action to update the label for all selected tokens
+    if (selected) {
+      selectedTokens.forEach(token => {
+        dispatch(tokenLabelUpdated({ id: token.id, label: newLabel }));
+      });
+    }
+    else {
+      dispatch(tokenLabelUpdated({ id: token.id, label: newLabel }));
+    }
+  };
+
+  const handleToggleLabelVisibility = () => {
+    // Toggle visibility for all selected tokens
+    if (selected) {
+      selectedTokens.forEach(token => {
+        dispatch(tokenLabelVisibilityToggled({ id: token.id, newVisibility: !token.labelVisibility }));
+      });
+    }
+    else {
+      dispatch(tokenLabelVisibilityToggled({ id: token.id }));
+    }
+  };
+  
+  // resizing
+  const showResizeHandles = useSelector(selectPressingShift);
+
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState(''); // 'nw', 'ne', 'sw', 'se', or ''
+  const [previewSize, setPreviewSize] = useState({ width: token.width, height: token.height });
+  const [resizeMove, setResizeMove] = useState({ x: 0, y: 0 });
+  const handleResize = (x: number, y: number) => {
+
+    
+    if (isRenaming || isDragging) {
+      return; //
+    }
+    const snapX = Math.round(x / cellSize) * cellSize;
+    const snapY = Math.round(y / cellSize) * cellSize;
+    if (snapX === 0 && snapY === 0) {
+      return;
+    }
+    if (snapX === resizeMove.x && snapY === resizeMove.y) {
+      return;
+    }
+    console.log('Resizing', { snapX, snapY });
+    const newWidth = resizeStart.includes('w') ? token.width - snapX : token.width + snapX;
+    const newHeight = resizeStart.includes('n') ? token.height - snapY : token.height + snapY;
+    setPreviewSize({
+      width: Math.max(newWidth, cellSize),
+      height: Math.max(newHeight, cellSize),
+    });
+    const newX = resizeStart.includes('w') ? token.x + snapX : token.x;
+    const newY = resizeStart.includes('n') ? token.y + snapY : token.y;
+    setPreviewPositions({
+      x: Math.min(newX, token.x + token.width - cellSize),
+      y: Math.min(newY, token.y + token.height - cellSize),
+    });
+    setResizeMove({
+      x: snapX,
+      y: snapY,
+    });
+    
+  };
+
+  const handleResizeEnd = () => {
+    if (isRenaming || isDragging) {
+      return; //
+    }
+    if (selected) {
+        dispatch(selectedTokensResized({
+          width: previewSize.width,
+          height: previewSize.height,
+        }));
+        dispatch(selectedTokensMoved({
+          x: previewPositions.x - token.x,
+          y: previewPositions.y - token.y,
+        }));
+
+    }
+    else {
+    dispatch(tokenResized({ id: token.id, width: previewSize.width, height: previewSize.height }));
+    dispatch(tokenMoved({ id: token.id, x: previewPositions.x, y: previewPositions.y }));
+    }
+  };
+
 
   return (
     <React.Fragment>
-      {isDragging &&
+      {(isDragging || isResizing) &&
       (
         <>
           <div
@@ -155,13 +264,14 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
               background: 'none',
               left: `${previewPositions.x}px`,
               top: `${previewPositions.y}px`,
-              width: `${cellSize}px`,
-              height: `${cellSize}px`,
+              width: `${previewSize.width}px`,
+              height: `${previewSize.height}px`,
               opacity: 0.5,
               display: overInventory ? 'none' : 'block',
             }}
           ></div>
           {/* SVG Overlay */}
+         { isDragging &&
           <svg style={{ 
             position: 'absolute', 
             left: 0, 
@@ -173,18 +283,18 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
             display: overInventory ? 'none' : 'block',
              }}>
             <line
-              x1={startDragPosition.x + cellSize / 2}
-              y1={startDragPosition.y + cellSize / 2}
-              x2={previewPositions.x + cellSize / 2}
-              y2={previewPositions.y + cellSize / 2}
+              x1={startDragPosition.x}
+              y1={startDragPosition.y}
+              x2={previewPositions.x + token.width / 2}
+              y2={previewPositions.y + token.height / 2}
               stroke="gray"
               strokeWidth="2"
               strokeDasharray="4"
             />
             {/* Circle showing the radius of movement */}
             <circle
-              cx={startDragPosition.x + cellSize / 2}
-              cy={startDragPosition.y + cellSize / 2}
+              cx={startDragPosition.x}
+              cy={startDragPosition.y}
               r={distanceInCells * cellSize}
               stroke="gray"
               strokeWidth="2"
@@ -192,15 +302,15 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
               strokeDasharray="4"
             />
             <text
-              x={startDragPosition.x + cellSize / 2 + 10} // Adjust as necessary for visibility
-              y={startDragPosition.y + cellSize / 2 - 10} // Adjust as necessary for visibility
+              x={startDragPosition.x + 10} // Adjust as necessary for visibility
+              y={startDragPosition.y - 10} // Adjust as necessary for visibility
               fill="gray"
               fontSize="16"
               fontFamily="Arial"
             >
               {`${distanceInCells.toFixed(1)} cells`}
             </text>
-          </svg>
+          </svg>}
         </>
       )}
 
@@ -210,8 +320,8 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
           background: token.color,
           left: `${token.x}px`,
           top: `${token.y}px`,
-          width: `${cellSize}px`,
-          height: `${cellSize}px`,
+          width: `${token.width}px`,
+          height: `${token.height}px`,
           backgroundImage: `url(${token.image})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -223,7 +333,9 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
         dragMomentum={false}
         layout
         transition={{
-          duration: 0.2,
+          type: 'spring',
+          stiffness: 200,
+          damping: 25,
         }}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0}
@@ -238,39 +350,186 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
           // Prevent dragging if renaming is in progress
             handleDrag(info.point.x, info.point.y);
         }}
-        onDoubleClick={() => setRenaming(true)}
+        onDoubleClick={() => setIsRenaming(true)}
+
+      
       >
+        {/* the four corners of the token, used for resizing */}
+        {showResizeHandles &&
+          <div 
+        className='token-resize-container'
+        >
+        <motion.div 
+        className={'token-left-up-corner'}
+        style={
+          {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: '10px',
+            height: '10px',
+            cursor: 'nw-resize',
+            backgroundColor: 'gray',
+            border: '1px solid white',
+          }
+        }
+        drag
+        dragMomentum={false}
+        layout
+        transition={{
+          duration: 0.2,
+        }}
+        dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+        dragElastic={0}
+        onDragStart={() => {
+          setIsResizing(true);
+          setResizeStart('nw');
+        }}
+        onDragEnd={() => {
+          setIsResizing(false);
+          setResizeStart('');
+          handleResizeEnd();
+        }}
+        onDrag={(_, info) => {
+          handleResize(info.offset.x, info.offset.y);
+        }}
+        />
+        <motion.div
+          className={'token-right-up-corner'}
+          style={
+            {
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              width: '10px',
+              height: '10px',
+              cursor: 'ne-resize',
+              backgroundColor: 'gray',
+              border: '1px solid white',
+            }
+          }
+          drag
+          dragMomentum={false}
+          layout
+          transition={{
+            duration: 0.2,
+          }}
+          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+          dragElastic={0}
+          onDragStart={() => {
+            setIsResizing(true);
+            setResizeStart('ne');
+          }}
+          onDragEnd={() => {
+            setIsResizing(false);
+            setResizeStart('');
+            handleResizeEnd();
+          }}
+          onDrag={(_, info) => {
+            handleResize(info.offset.x, info.offset.y);
+          }}
+        />
+        <motion.div
+          className={'token-left-down-corner'}
+          style={
+            {
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              width: '10px',
+              height: '10px',
+              cursor: 'sw-resize',
+              backgroundColor: 'gray',
+              border: '1px solid white',
+            }
+          }
+          drag
+          dragMomentum={false}
+          layout
+          transition={{
+            duration: 0.2,
+          }}
+          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+          dragElastic={0}
+          onDragStart={() => {
+            setIsResizing(true);
+            setResizeStart('sw');
+          }}
+          onDragEnd={() => {
+            setIsResizing(false);
+            setResizeStart('');
+            handleResizeEnd();
+          }}
+          onDrag={(_, info) => {
+            handleResize(info.offset.x, info.offset.y);
+          }}
+        />
+        <motion.div
+          className={'token-right-down-corner'}
+          style={
+            {
+              position: 'absolute',
+              right: 0,
+              bottom: 0,
+              width: '10px',
+              height: '10px',
+              cursor: 'se-resize',
+              backgroundColor: 'gray',
+              border: '1px solid white',
+            }
+          }
+          drag
+          dragMomentum={false}
+          layout
+          transition={{
+            duration: 0.2,
+          }}
+          dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+          dragElastic={0}
+          onDragStart={() => {
+            setIsResizing(true);
+            setResizeStart('se');
+          }}
+          onDragEnd={() => {
+            setIsResizing(false);
+            setResizeStart('');
+            handleResizeEnd();
+          }}
+          onDrag={(_, info) => {
+            handleResize(info.offset.x, info.offset.y);
+          }}
+          
+        />
+        </div>}
         <div
           className={'token-label-container'}
           style={{
-           pointerEvents: renaming ? 'auto' : 'none',
+           pointerEvents: isRenaming ? 'auto' : 'none',
           }}
         >
-          {renaming ? (
+          {isRenaming ? (
             <>
               <input
                 className={'token-label-input'}
                 value={token.label}
-                onChange={(e) => dispatch(tokenLabelUpdated({ id: token.id, label: e.target.value })) }
+                onChange={(e) => handleLabelUpdate(e.target.value)}
                 onBlur={() => 
                   {
-                    setRenaming(false);
-                    dispatch(tokenLabelUpdated({ id: token.id, label: token.label }));
+                    setIsRenaming(false);
                   }
                 }
                 autoFocus
                 autoSave='true'
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setRenaming(false);
-                    dispatch(tokenLabelUpdated({ id: token.id, label: token.label }));
+                    setIsRenaming(false);
                     
                   }
                 }}
               />
               <button
                 onPointerDown={() => {
-                  dispatch(tokenLabelVisibilityToggled({ id: token.id }));
+                  handleToggleLabelVisibility();
                 }}
                 className={'visibility-button'}
               >
@@ -281,7 +540,7 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
             token.label && (
               <span
                 className={'token-label'}
-                onClick={() => setRenaming(true)}
+                onClick={() => setIsRenaming(true)}
               >
                 {token.labelVisibility ? token.label : '...'}
               </span>
@@ -301,6 +560,8 @@ const MemoizedToken = React.memo(Token, (prevProps, nextProps) => {
     prevProps.token.color !== nextProps.token.color ||
     prevProps.token.image !== nextProps.token.image ||
     prevProps.token.label !== nextProps.token.label ||
+    prevProps.token.width !== nextProps.token.width ||
+    prevProps.token.height !== nextProps.token.height ||
     prevProps.token.labelVisibility !== nextProps.token.labelVisibility ||
     prevProps.inventoryRef !== nextProps.inventoryRef ||
     prevProps.gridRef !== nextProps.gridRef;

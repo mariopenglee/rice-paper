@@ -1,29 +1,25 @@
-import { useState } from "react";
+import { cellSize } from "../utils";
+import React from 'react';
 
 interface CellProps {
     x: number;
     y: number;
-    size: number;
     color: string;
     opacity?: number;
 }
 
 
-const Cell = ({ x, y, size, color, opacity = 1 }: CellProps) => {
+const Cell = ({ x, y, color, opacity = 1 }: CellProps) => {
     
     const style = {
         left: x,
         top: y,
-        width: size,
-        height: size,
+        width: cellSize,
+        height: cellSize,
         backgroundColor: color,
         opacity: opacity,
     };
 
-    useState(() => {
-        console.log('Cell rendered');
-    }
-    );
 
     return (
     <div 
@@ -33,4 +29,18 @@ const Cell = ({ x, y, size, color, opacity = 1 }: CellProps) => {
     </div>
     );
 };
-export default Cell;
+ 
+const MemoizedCell = React.memo(Cell, (prevProps, nextProps) => {
+    const shouldRerender = prevProps.x !== nextProps.x ||
+     prevProps.y !== nextProps.y || 
+     prevProps.color !== nextProps.color || 
+     prevProps.opacity !== nextProps.opacity;
+
+    if (shouldRerender) {
+      console.log('Re-rendering due to change in props:', { prevProps, nextProps });
+    }
+    return !shouldRerender;
+  }
+    );
+
+export default MemoizedCell;

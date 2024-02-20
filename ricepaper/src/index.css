@@ -1,7 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Protest+Revolution&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:slnt,wght@-10..0,100..900&display=swap');
 :root {
-  font-family: 'Protest Revolution', sans-serif;
+  font-family: "Inter", sans-serif;
   line-height: 1.5;
   font-weight: 400;
 

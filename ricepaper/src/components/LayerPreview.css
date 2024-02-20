@@ -34,7 +34,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 0px;
   width: 100%;
 
 }
@@ -63,12 +63,38 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  width: 3rem;
-  height: 3rem;
+  flex-direction: row;
+  gap: 0;
+  :is(button, button:hover, button:active, button:focus) {
+    width: 2em;
+    height: 2em;
+    margin: 0px;
+    padding: 0px;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0;
+    background-color: transparent;
+    color: black;
+    outline: none;
+    border: none;
+  }
 
 }
 .remove-button {
   margin: 0px;
   padding: 0px;
+}
+
+
+.left-controls{
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: center;
+  justify-content: center;
+  margin: 0px;
+  padding: 0px;
+  width: 5em;
 }
