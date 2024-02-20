@@ -18,7 +18,6 @@ import {
     layerRemoved,
     layerSelected,
     layerOpacityUpdated,
-    layerBackgroundUpdated, 
     layerVisibilityToggled, 
 } from '../redux/layers/layersSlice';
 

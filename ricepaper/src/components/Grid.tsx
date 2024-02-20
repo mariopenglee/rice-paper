@@ -45,14 +45,12 @@ import {
 } from '../redux/tokens/tokensSlice';
 
 import {
-    toolSelected,
     shiftPressed,
     shiftReleased,
 } from '../redux/currentTool/currentToolSlice';
 
 import {
     colorAdded, 
-    colorRemoved,
     colorSelected,
     selectedColorUpdated,
     selectColors,
