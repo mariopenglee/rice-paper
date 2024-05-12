@@ -12,6 +12,7 @@ import Alpha from '@uiw/react-color-alpha';
 import { 
     gridWidth,
     gridHeight,
+    cellSize,
  } from '../utils';
 
 import { 
@@ -21,15 +22,23 @@ import {
     layerVisibilityToggled, 
 } from '../redux/layers/layersSlice';
 
-
 import { useDispatch } from 'react-redux';
 
 import './LayerPreview.css';
 interface LayerPreviewProps {
     layer: LayerData;
+    tokens: TokenType[];
     selected: boolean;
 }
 
+
+export interface TokenType {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+  }
 
 interface LayerData {
     id: string; 
@@ -39,7 +48,7 @@ interface LayerData {
     visibility: boolean;
 }
 
-const LayerPreview = ({ layer, selected }: LayerPreviewProps) => {
+const LayerPreview = ({ layer, selected, tokens }: LayerPreviewProps) => {
     const [renaming, setRenaming] = useState(false);
     const [layerName, setLayerName] = useState('New Layer');
     const controls = useDragControls();
@@ -70,6 +79,7 @@ const LayerPreview = ({ layer, selected }: LayerPreviewProps) => {
         const scale = Math.min(previewSize / layerWidth, previewSize / layerHeight);
         const cells = Object.entries(layer.cells).map(([key, value]) => {
             const [gridX, gridY] = key.split('-').map(Number);
+            console.log('Rendering cell:', { gridX, gridY, key, value });
             const cellStyle: React.CSSProperties = {
                 position: 'absolute',
                 left: `${(gridX - bounds.minX) * scale}px`,
@@ -80,6 +90,24 @@ const LayerPreview = ({ layer, selected }: LayerPreviewProps) => {
             };
             return <div key={key} style={cellStyle}></div>;
         });
+
+        const layerTokens = tokens.map(token => {
+            if (token.layer === layer.id) {
+                console.log('Rendering token:', token);
+                const cellStyle: React.CSSProperties = {
+                    position: 'absolute',
+                    left: `${((token.x / cellSize) - bounds.minX) * scale}px`,
+                    top: `${((token.y / cellSize) - bounds.minY) * scale}px`,
+                    width: `${token.width / cellSize * scale}px`,
+                    height: `${token.height /cellSize * scale}px`,
+                    backgroundColor: token.color,
+                    borderRadius: '50%',
+                };
+                return <div key={token.id} style={cellStyle}></div>;
+            }
+            return null;
+        }
+        );
     
         // Calculate the offset to center the preview
         const offsetX = (previewSize - layerWidth * scale) / 2;
@@ -102,7 +130,9 @@ const LayerPreview = ({ layer, selected }: LayerPreviewProps) => {
                     left: `${offsetX}px`, 
                     top: `${offsetY}px` }}>
                     {cells}
+                    {layerTokens}
                 </div>
+
             </div>
         );
     };
@@ -219,7 +249,8 @@ const MemoizedLayerPreview = React.memo(LayerPreview, (prevProps, nextProps) => 
     prevProps.layer.visibility !== nextProps.layer.visibility ||
     prevProps.selected !== nextProps.selected ||
     prevProps.layer.cells !== nextProps.layer.cells ||
-    prevProps.layer.visibility !== nextProps.layer.visibility;
+    prevProps.layer.visibility !== nextProps.layer.visibility ||
+    prevProps.tokens !== nextProps.tokens;
 
     if (shouldRerender) {
         // console.log('Re-rendering due to change in props:', { prevProps, nextProps });

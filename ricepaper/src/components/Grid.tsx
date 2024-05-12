@@ -668,8 +668,10 @@ const Grid: React.FC = () => {
 
             <div className="color-palette">
                 {colorPalette.map((color, index) => (
-                    <div className="colors-container">
-                   
+                    <div 
+                    className="colors-container"
+                    key={index}
+                    >
                      {index === selectedColor.index && colorPickerOpen &&
                         <div 
                 className='color-picker'
@@ -767,11 +769,15 @@ const Grid: React.FC = () => {
                     <AnimatePresence>
                 {layerOrder.map((layerId) => {
                 const layer = layers.find(layer => layer.id === layerId);
+                // add the tokens to the layer
+                const tokensForLayer = tokens.filter(token => token.layer === layerId);
+
                 if (!layer) return null; // Handle if layer is not found
                 return (
                     <LayerPreview
                         key={layer.id}
                         layer={layer}
+                        tokens={tokensForLayer}
                         selected={layer.id === selectedLayer}
                     />
                 );
