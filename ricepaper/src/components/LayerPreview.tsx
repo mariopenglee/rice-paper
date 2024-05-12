@@ -38,6 +38,8 @@ export interface TokenType {
     width: number;
     height: number;
     color: string;
+    layer: string;
+    id: string;
   }
 
 interface LayerData {

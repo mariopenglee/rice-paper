@@ -321,7 +321,7 @@ const Grid: React.FC = () => {
     const eraseCell = (gridX: number, gridY: number) => {
         // Erase the cell at the given coordinates on the selected layer
         const cellKey = `${gridX}-${gridY}`;
-        dispatch(layerCellErased({ layerId: selectedLayer, cellKey }));
+        dispatch(layerCellErased({ id: selectedLayer, cellKey }));
     }
 
     const paintRectangle = (startX: number, startY: number, endX: number, endY: number) => {
@@ -383,6 +383,7 @@ const Grid: React.FC = () => {
 
         }
         else if (tool === 'erase' && erasing) {
+
             const cellKey = `${gridX}-${gridY}`;
             if (erasing && layers[lookupLayerIndex(selectedLayer)].cells[cellKey]) {
                 eraseCell(gridX, gridY);
@@ -479,6 +480,7 @@ const Grid: React.FC = () => {
                     background: tool === 'paintbrush' ? selectedColor.color : 'transparent',
                     opacity: 0.5,
                     pointerEvents: 'none',
+                    border: tool === 'paintbrush' ? 'none' : '2px dashed red',
                 }}
             />
         );
