@@ -2,7 +2,7 @@
     "rewrites": [
       {
         "source": "/(.*)",
-        "destination": "ricepaper/index.html"
+        "destination": "/index.html"
       }
     ]
   }
