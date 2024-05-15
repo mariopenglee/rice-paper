@@ -8,7 +8,7 @@ import { configureStore } from '@reduxjs/toolkit'
 // import { loadState, saveState } from '../utils/localStorage';
 import axios from 'axios';
 
-const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
 
 // Load state from the backend
 const loadState = async (mapId : string) => {
