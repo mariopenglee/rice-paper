@@ -37,6 +37,10 @@ const colorsSlice = createSlice({
         colorSelected: (state, action) => {
             state.selectedColor = action.payload;
         },
+        fullUpdate: (_, action) => {
+            return action.payload.colors;
+        }
+
     },
 });
 
@@ -44,7 +48,8 @@ export const {
     colorAdded, 
     colorRemoved,
     colorSelected,
-    selectedColorUpdated
+    selectedColorUpdated,
+    fullUpdate
  } = colorsSlice.actions;
 
 export default colorsSlice.reducer;

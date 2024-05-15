@@ -7,6 +7,7 @@ import colorsReducer from './colors/colorsSlice';
 import { configureStore } from '@reduxjs/toolkit'
 // import { loadState, saveState } from '../utils/localStorage';
 import axios from 'axios';
+import { io, Socket } from 'socket.io-client';
 
 const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
 export interface RootState {
@@ -16,6 +17,8 @@ export interface RootState {
   currentTool: ReturnType<typeof currentToolReducer>;
   colors: ReturnType<typeof colorsReducer>;
 }
+let socket: Socket;
+
 // Load state from the backend
 const loadState = async (mapId: string): Promise<RootState | undefined> => {
   try {
@@ -56,6 +59,14 @@ export const initializeStore = async (mapId : string) => {
     saveState(mapId, store.getState() as RootState);
   });
 
+  socket = io(BACKEND_URL);
+  socket.emit('joinMap', mapId);
+
+  socket.on('updateState', (state: RootState) => {
+    store.dispatch({ type: 'fullUpdate', payload: state });
+  }
+  );
+  
   return store;
 };
 

@@ -70,12 +70,28 @@ const layersSlice = createSlice({
                 });
             }
         },
+        fullUpdate: (_, action) => {
+            return action.payload.layers;
+        },
     },
+    
+    
+    
 
         
     });
 
-export const { layerAdded, layerRemoved, layerSelected, layerOpacityUpdated, layerBackgroundUpdated, layerVisibilityToggled, layerCellErased, layerCellsPainted } = layersSlice.actions;
+export const { 
+    layerAdded, 
+    layerRemoved,
+    layerSelected,
+    layerOpacityUpdated,
+    layerBackgroundUpdated,
+    layerVisibilityToggled,
+    layerCellErased,
+    layerCellsPainted,
+    fullUpdate,
+ } = layersSlice.actions;
 export default layersSlice.reducer;
 export const selectLayers = (state: RootState) => state.layers.layers;
 export const selectSelectedLayer = (state: RootState) => state.layers.selectedLayer;

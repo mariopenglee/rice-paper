@@ -99,7 +99,10 @@ const tokensSlice = createSlice({
             }
             return token;
             });
-        }
+        },
+        fullUpdate: (_, action) => {
+            return action.payload.tokens;
+        },
     },
 
 });

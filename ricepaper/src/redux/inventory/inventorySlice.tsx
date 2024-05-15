@@ -33,11 +33,19 @@ const inventorySlice = createSlice({
         inventoryItemsSet: (state, action) => {
             state.inventoryItems = action.payload;
         },
+        fullUpdate: (_, action) => {
+            return action.payload.inventoryItems;
+        }
     },
 });
 
-export const { inventoryItemAdded, inventoryItemRemoved, inventoryItemLabelUpdated, inventoryItemsSet } = inventorySlice.actions;
-
+export const { 
+    inventoryItemAdded, 
+    inventoryItemRemoved,
+    inventoryItemLabelUpdated,
+    inventoryItemsSet,
+    fullUpdate
+ } = inventorySlice.actions;
 export default inventorySlice.reducer;
 
 export const selectInventoryItems = (state: RootState) => state.inventory.inventoryItems;
