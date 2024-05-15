@@ -9,20 +9,26 @@ import { configureStore } from '@reduxjs/toolkit'
 import axios from 'axios';
 
 const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
-
+export interface RootState {
+  layers: ReturnType<typeof layersReducer>;
+  tokens: ReturnType<typeof tokensReducer>;
+  inventory: ReturnType<typeof inventoryReducer>;
+  currentTool: ReturnType<typeof currentToolReducer>;
+  colors: ReturnType<typeof colorsReducer>;
+}
 // Load state from the backend
-const loadState = async (mapId : string) => {
+const loadState = async (mapId: string): Promise<RootState | undefined> => {
   try {
-    const response = await axios.get(BACKEND_URL + `/api/state/${mapId}`);
-    console.log('response', response);
+    const response = await axios.get(`${BACKEND_URL}/api/state/${mapId}`);
     return response.data || undefined;
   } catch (error) {
     console.error('Could not load state', error);
     return undefined;
   }
 };
+
 // Save state to the backend
-const saveState = async (mapId : string, state : any) => {
+const saveState = async (mapId : string, state : RootState) => {
   try {
     await axios.post(BACKEND_URL + `/api/state/${mapId}`,
      { state });
@@ -47,7 +53,7 @@ export const initializeStore = async (mapId : string) => {
   });
 
   store.subscribe(() => {
-    saveState(mapId, store.getState());
+    saveState(mapId, store.getState() as RootState);
   });
 
   return store;
@@ -62,9 +68,6 @@ const typeStore = configureStore({
     colors: colorsReducer,
   },
 });
-
-// Infer the `RootState` and `AppDispatch` types from the store itself
-export type RootState = ReturnType<typeof typeStore.getState>
 // Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof typeStore.dispatch
 
