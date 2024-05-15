@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+      {
+        "source": "/(.*)",
+        "destination": "ricepaper/index.html"
+      }
+    ]
+  }
