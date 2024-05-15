@@ -22,9 +22,10 @@ import {
   selectPressingShift,
 } from '../redux/currentTool/currentToolSlice';
 
+import { TokenType } from '../redux/store';
 
 interface TokenProps {
-  token: any;
+  token: TokenType;
   inventoryRef: any;
   gridRef: any;
 }
@@ -133,7 +134,7 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
     if (selected) {
       if (isOverInventory(info.point.x, info.point.y)) {
         // If token is over inventory, remove it
-        selectedTokens.forEach((SelectedToken: any) => {
+        selectedTokens.forEach((SelectedToken: TokenType) => {
           dispatch(tokenRemoved({ id: SelectedToken.id }));
           tokenSelected([]);
           
@@ -164,7 +165,7 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
   const handleLabelUpdate = (newLabel: string) => {
     // Dispatch an action to update the label for all selected tokens
     if (selected) {
-      selectedTokens.forEach(token => {
+      selectedTokens.forEach((token: TokenType) => {
         dispatch(tokenLabelUpdated({ id: token.id, label: newLabel }));
       });
     }
@@ -176,7 +177,7 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
   const handleToggleLabelVisibility = () => {
     // Toggle visibility for all selected tokens
     if (selected) {
-      selectedTokens.forEach(token => {
+      selectedTokens.forEach((token: TokenType) => {
         dispatch(tokenLabelVisibilityToggled({ id: token.id, newVisibility: !token.labelVisibility }));
       });
     }

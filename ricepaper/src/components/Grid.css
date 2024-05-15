@@ -196,11 +196,6 @@ width: 100%;
   }
 
 
-  .colors-container {
-
-  }
-
-
   .color-picker{
     position: absolute;
     top: -160px;
@@ -253,4 +248,32 @@ width: 100%;
   .color-gradient .react-colorful__hue-pointer{
     border-radius: 0;
     width: 12px;
+  }
+
+
+
+  /* profile related stuff */
+  .profile-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000; /* Ensure it's above other elements */
+  }
+
+  .profile-panel {
+    position: fixed;
+    top: 1em;
+    right: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    padding: 1em;
+    background: #f0f0f0;
+    color: black;
+    border-radius: 5px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* Ensure it's above other elements */
+
+    width: 25em;
+    
   }

@@ -1,15 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { RootState } from '../store';
-interface Layer {
-    id: string;
-    cells: { [key: string]: string };
-    opacity: number;
-    background: string;
-    visibility: boolean;
-}
+import { LayerType } from "../store";
 
 interface LayersState {
-    layers: Layer[];
+    layers: LayerType[];
     selectedLayer: string;
 }
 

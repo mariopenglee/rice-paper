@@ -15,6 +15,7 @@ import LibraryAddIcon from '@mui/icons-material/LibraryAdd';
 import LayersIcon from '@mui/icons-material/Layers';
 import MinimizeIcon from '@mui/icons-material/Minimize';
 import AddBoxIcon from '@mui/icons-material/AddBox';
+import PersonIcon from '@mui/icons-material/Person';
 import { HexColorPicker, HexColorInput } from "react-colorful";
 import { v4 as uuidv4 } from 'uuid';
 import LayerPreview from './LayerPreview';
@@ -60,17 +61,9 @@ import {
 
 
 
-interface TokenType {
-    id: string;
-    x: number;
-    y: number;
-    color: string;
-    layer: string;
-    label: string;
-    labelVisibility: boolean;
-    width: number;
-    height: number;
-}
+
+import { TokenType } from '../redux/store';
+import { LayerType } from '../redux/store';
 
 
 const Grid: React.FC = () => {
@@ -90,7 +83,11 @@ const Grid: React.FC = () => {
     // Layer states
     const layers = useSelector(selectLayers);
     const selectedLayer = useSelector(selectSelectedLayer);
-    const [layerOrder, setLayerOrder] = useState(layers.map(layer => layer.id));
+    const [layerOrder, setLayerOrder] = useState(layers.map((layer : LayerType) => layer.id));
+
+    // Profile states
+    const [profileOpen, setProfileOpen] = useState(false);
+    const user  = null;
 
     // Inventory states
     const inventoryRef = useRef<HTMLDivElement>(null); // Ref for the inventory container
@@ -107,7 +104,7 @@ const Grid: React.FC = () => {
 
 
     const lookupLayerIndex = useCallback((id: string) => {
-        return layers.findIndex(layer => layer.id === id);
+        return layers.findIndex((layer: LayerType) => layer.id === id);
     }
     , [layers]);
 
@@ -218,8 +215,8 @@ const Grid: React.FC = () => {
 
 
 
-    const renderedLayersAndTokens = layerOrder.map((layerId, layerIndex) => {
-        const layer = layers.find(layer => layer.id === layerId);
+    const renderedLayersAndTokens = layerOrder.map((layerId: string, layerIndex: number) => {
+        const layer = layers.find((layer: LayerType) => layer.id === layerId);
         if (!layer) return null; // Handle if layer is not found
 
         const efficientOpacity = layer.opacity * Number(layer.visibility);
@@ -232,21 +229,21 @@ const Grid: React.FC = () => {
                     key={key}
                     x={gridX * cellSize}
                     y={gridY * cellSize}
-                    color={value}
+                    color={value as string} // Cast value to string
                 />
             );
         });
 
         // Render tokens for the current layer
-        const renderedTokensForLayer = tokens
-            .filter(token => token.layer === layer.id) // Filter tokens by current layer
-            .map(token => (
-                <Token
-                    key={token.id}
-                    token={token}
-                    inventoryRef= {inventoryRef}
-                    gridRef={gridRef}
-                />
+        const renderedTokensForLayer: JSX.Element[] = tokens
+            .filter((token: TokenType) => token.layer === layer.id) // Filter tokens by current layer
+            .map((token: TokenType) => (
+            <Token
+                key={token.id}
+                token={token}
+                inventoryRef={inventoryRef}
+                gridRef={gridRef}
+            />
             ));
 
         return (
@@ -271,8 +268,8 @@ const Grid: React.FC = () => {
         );
     });
 
-    const renderedLayerBackgrounds = layerOrder.map((layerId, layerIndex) => {
-        const layer = layers.find(layer => layer.id === layerId);
+    const renderedLayerBackgrounds = layerOrder.map((layerId: string, layerIndex: number) => {
+        const layer = layers.find((layer: LayerType) => layer.id === layerId);
         if (!layer) return null;
         return (
             <div
@@ -432,7 +429,7 @@ const Grid: React.FC = () => {
                 bottom: Math.max(selectionPreview.startY, selectionPreview.endY),
             };
     
-            const selected = tokens.filter(token => {
+            const selected = tokens.filter( (token: TokenType) => {
                 const { x, y } = token;
                 return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
             });
@@ -545,6 +542,7 @@ const Grid: React.FC = () => {
                 labelVisibility: true,
                 width: cellSize,
                 height: cellSize,
+                image: '',
             };
             dispatch(tokenAdded(newToken));
         }
@@ -657,7 +655,7 @@ const Grid: React.FC = () => {
     return (
         <>
 
-            {/* Toolbar */}
+            {/* Toolbar, located on the left side of the screen */}
             <div className="toolbar">
                 <button onClick={() => setTool('paintbrush')}><BrushIcon /></button>
                 <button onClick={() => setTool('pan')}><PanToolIcon /></button>
@@ -668,8 +666,9 @@ const Grid: React.FC = () => {
 
             </div>
 
+            {/* Color Palette, located on the bottom of the screen */}
             <div className="color-palette">
-                {colorPalette.map((color, index) => (
+                {colorPalette.map((color: string, index: number) => (
                     <div 
                     className="colors-container"
                     key={index}
@@ -719,6 +718,8 @@ const Grid: React.FC = () => {
 
 
                 </div>
+            
+            {/* Layers Panel, located on the right side of the screen */}
             <button 
             className='toggle-layers-button'
             onClick={() => setLayerPanelOpen(!layerPanelOpen)}
@@ -769,10 +770,10 @@ const Grid: React.FC = () => {
 
                 >
                     <AnimatePresence>
-                {layerOrder.map((layerId) => {
-                const layer = layers.find(layer => layer.id === layerId);
+                {layerOrder.map((layerId: string) => {
+                const layer = layers.find((layer: LayerType) => layer.id === layerId)
                 // add the tokens to the layer
-                const tokensForLayer = tokens.filter(token => token.layer === layerId);
+                const tokensForLayer = tokens.filter((token: TokenType) => token.layer === layerId);
 
                 if (!layer) return null; // Handle if layer is not found
                 return (
@@ -793,6 +794,22 @@ gridRef={gridRef}
 />
               
             </motion.div>}
+
+            {/* Profile Panel, located on the top right of the screen */}
+            <button 
+            className='profile-button'
+            onClick={() => setProfileOpen(true)}
+            >
+                
+                {user ? <PersonIcon /> : 'Login/Signup'}
+            </button>
+            {
+                profileOpen &&
+                <div className='profile-panel'>
+                    <button onClick={() => setProfileOpen(false)}>Close</button>
+                </div>
+            }
+
 
 
 
