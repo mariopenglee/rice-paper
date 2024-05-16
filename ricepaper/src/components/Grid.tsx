@@ -5,6 +5,7 @@ import './Grid.css';
 import Token from './Token';
 import Cell from './Cell';
 import Dot from './Dot';
+import Note from './Note';
 import { AnimatePresence, Reorder, motion } from 'framer-motion';
 import BrushIcon from '@mui/icons-material/Brush';
 import PanToolIcon from '@mui/icons-material/PanTool';
@@ -16,6 +17,7 @@ import LayersIcon from '@mui/icons-material/Layers';
 import MinimizeIcon from '@mui/icons-material/Minimize';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import PersonIcon from '@mui/icons-material/Person';
+import StickyNote2Icon from '@mui/icons-material/StickyNote2';
 import { HexColorPicker, HexColorInput } from "react-colorful";
 import { v4 as uuidv4 } from 'uuid';
 import LayerPreview from './LayerPreview';
@@ -35,6 +37,7 @@ import {
     layerBackgroundUpdated, 
     layerCellsPainted,
     layerCellErased,
+    layerReordered,
     selectLayers,
     selectSelectedLayer,
 } from '../redux/layers/layersSlice';
@@ -44,6 +47,11 @@ import {
     tokenSelected,
     selectTokens,
 } from '../redux/tokens/tokensSlice';
+
+import {
+    noteAdded,
+    selectNotes,
+} from '../redux/notes/notesSlice';
 
 import {
     shiftPressed,
@@ -56,14 +64,12 @@ import {
     selectedColorUpdated,
     selectColors,
     selectSelectedColor,
-    selectBackgroundColor,
 } from '../redux/colors/colorsSlice';
 
 
 
 
-import { TokenType } from '../redux/store';
-import { LayerType } from '../redux/store';
+import { LayerType, TokenType, NoteType } from '../redux/store';
 
 
 const Grid: React.FC = () => {
@@ -75,7 +81,7 @@ const Grid: React.FC = () => {
     const [tool, setTool] = useState('paintbrush'); // Current tool
     
     // color states
-    const initialColor = useSelector(selectBackgroundColor);
+    const initialColor = '#FFF8DC';
     const colorPalette = useSelector(selectColors);
     const selectedColor = useSelector(selectSelectedColor);
     const [colorPickerOpen, setColorPickerOpen] = useState(false);
@@ -83,7 +89,7 @@ const Grid: React.FC = () => {
     // Layer states
     const layers = useSelector(selectLayers);
     const selectedLayer = useSelector(selectSelectedLayer);
-    const [layerOrder, setLayerOrder] = useState(layers.map((layer : LayerType) => layer.id));
+    const layerOrder = layers.map((layer: LayerType) => layer.id);
 
     // Profile states
     const [profileOpen, setProfileOpen] = useState(false);
@@ -101,6 +107,9 @@ const Grid: React.FC = () => {
     const tokens = useSelector(selectTokens);
     const [isSelecting, setIsSelecting] = useState(false);
     const [selectionPreview, setSelectionPreview] = useState({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
+    
+    // Note states
+    const notes = useSelector(selectNotes);
 
 
     const lookupLayerIndex = useCallback((id: string) => {
@@ -175,15 +184,18 @@ const Grid: React.FC = () => {
     const handleAddLayer = () => {
         const newLayer = {
             id: uuidv4(),
-            name: 'New Layer',
+            label: 'New Layer',
             cells: {},
             opacity: 1,
             background: 'transparent',
             visibility: true,
         };
         dispatch(layerAdded({ layer: newLayer }));
-        setLayerOrder([...layerOrder, newLayer.id]);
     };
+
+    const handleReorderLayers = (newLayerOrder: string[]) => {
+        dispatch(layerReordered(newLayerOrder));
+    }
 
 
     const handleUpdateLayerBackground = (id: string, color: string) => {
@@ -246,6 +258,17 @@ const Grid: React.FC = () => {
             />
             ));
 
+        // Render notes for the current layer
+        const renderedNotesForLayer: JSX.Element[] = notes
+            .filter((note: NoteType) => note.layer === layer.id) // Filter notes by current layer
+            .map((note: NoteType) => (
+            <Note
+                key={note.id}
+                note={note}
+                gridRef={gridRef}
+            />
+            ));
+
         return (
             <div
             key={layerIndex}
@@ -264,6 +287,7 @@ const Grid: React.FC = () => {
             >
                 {renderedCells}
                 {renderedTokensForLayer}
+                {renderedNotesForLayer}
             </div>
         );
     });
@@ -444,7 +468,7 @@ const Grid: React.FC = () => {
        
     }
 
-    const renderedPaintPreview = Array.from(paintPreview).map((cellKey, index) => {
+    const renderedPaintPreviewCells = Array.from(paintPreview).map((cellKey, index) => {
         const [gridX, gridY] = cellKey.split('-').map(Number);
         return (
             <Cell
@@ -457,6 +481,21 @@ const Grid: React.FC = () => {
         );
     }
     );
+
+    const renderedPaintPreview = painting && 
+    <div
+    style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: gridRef.current?.scrollWidth,
+        height: gridRef.current?.scrollHeight,
+        zIndex: 20,
+    }}
+    >
+        {renderedPaintPreviewCells}
+    </div>;
+    
     
 
     const renderRectanglePreview = () => {
@@ -527,6 +566,7 @@ const Grid: React.FC = () => {
         }
         else {
             setPaintPreview(new Set([`${gridX}-${gridY}`]));
+
         }
         setPainting(true);
         }
@@ -586,13 +626,25 @@ const Grid: React.FC = () => {
                 endY: gridY,
                 show: true });
         }
+        else if (tool === 'note') {
+            // alert('Warning, notes are not yet fully implemented');
+            const { x, y } = accountForScroll(clientX-50, clientY-25, gridRef);
+            
+            const newNote: NoteType = {
+                id: uuidv4(),
+                x,
+                y,
+                layer: selectedLayer,
+                text: 'New note',
+                visibility: true,
+                width: 100,
+                height: 50,
+            };
+            dispatch(noteAdded(newNote));
+            console.log('new note added at ', newNote, 'x:', x, 'y:', y);
+        }
         
-        
-        
-        
-        
-        
-        
+
     };
 
 
@@ -657,12 +709,13 @@ const Grid: React.FC = () => {
 
             {/* Toolbar, located on the left side of the screen */}
             <div className="toolbar">
-                <button onClick={() => setTool('paintbrush')}><BrushIcon /></button>
                 <button onClick={() => setTool('pan')}><PanToolIcon /></button>
-                <button onClick={() => setTool('token')}><CircleIcon /></button>
+                <button onClick={() => setTool('paintbrush')}><BrushIcon /></button>
                 <button onClick={() => setTool('erase')}><CancelPresentationIcon /></button>
                 <button onClick={() => setTool('fill')}><FormatColorFillIcon /></button>
+                <button onClick={() => setTool('token')}><CircleIcon /></button>
                 <button onClick={() => setTool('select')}><HighlightAltIcon /></button>
+                <button onClick={() => setTool('note')}><StickyNote2Icon /></button>
 
             </div>
 
@@ -765,7 +818,7 @@ const Grid: React.FC = () => {
                     delayChildren: 0.3,
                 }}
                 axis="y"
-                onReorder={setLayerOrder} // Update the layer order state
+                onReorder={handleReorderLayers}
                 values={layerOrder}
 
                 >
@@ -773,14 +826,14 @@ const Grid: React.FC = () => {
                 {layerOrder.map((layerId: string) => {
                 const layer = layers.find((layer: LayerType) => layer.id === layerId)
                 // add the tokens to the layer
-                const tokensForLayer = tokens.filter((token: TokenType) => token.layer === layerId);
+                const tokensForLayerPreview = tokens.filter((token: TokenType) => token.layer === layerId);
 
                 if (!layer) return null; // Handle if layer is not found
                 return (
                     <LayerPreview
                         key={layer.id}
                         layer={layer}
-                        tokens={tokensForLayer}
+                        tokens={tokensForLayerPreview}
                         selected={layer.id === selectedLayer}
                     />
                 );
@@ -828,8 +881,16 @@ gridRef={gridRef}
                     <div 
                className="grid" 
                ref={gridRef}
-               onPointerDown={handleMouseDown}
-                onPointerUp={handleMouseUp}
+               //prevent defaults
+               onPointerDown={(event) => {
+                     handleMouseDown(event);
+                }
+            }
+            onContextMenu={(event) => event.preventDefault()}
+                onPointerUp={(event) => {
+                    handleMouseUp(event);
+                }
+            }
                 onPointerMove={handleMouseMove}
                >
                 

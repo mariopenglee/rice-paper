@@ -11,6 +11,7 @@ const initialState: LayersState = {
     layers: [
       {
       id: 'layer-0',
+      label: 'New Layer',
       cells: {},
       opacity: 1,
       background: 'transparent',
@@ -70,9 +71,23 @@ const layersSlice = createSlice({
                 });
             }
         },
-        fullUpdate: (_, action) => {
-            return action.payload.layers;
+        layerReordered: (state, action) => {
+            state.layers = action.payload.map((newId: string) => state.layers.find(layer => layer.id === newId));
+            console.log("reordered layers: ", state.layers, "newIndexList: ", action.payload);
+
         },
+        layerLabelUpdated: (state, action) => {
+            const { id, label } = action.payload;
+            const layer = state.layers.find(layer => layer.id === id);
+            if (layer) {
+                layer.label = label;
+            }
+        },
+        layerSynced: (state, action) => {
+            state.layers = action.payload;
+        },
+        
+
     },
     
     
@@ -90,7 +105,9 @@ export const {
     layerVisibilityToggled,
     layerCellErased,
     layerCellsPainted,
-    fullUpdate,
+    layerReordered,
+    layerLabelUpdated,
+    layerSynced,
  } = layersSlice.actions;
 export default layersSlice.reducer;
 export const selectLayers = (state: RootState) => state.layers.layers;

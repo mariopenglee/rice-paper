@@ -183,7 +183,6 @@ export default function Inventory({ innerRef, gridRef }: InventoryProps) {
     
     const renderInventoryGrid = () => {
         const grid = inventoryItems.map((token : TokenType) => {
-            console.log('rendering token', token);
             return (
                 <Reorder.Item
                     key={token['id']}

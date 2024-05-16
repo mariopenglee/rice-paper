@@ -1,0 +1,83 @@
+.note {
+    position: absolute;
+    cursor: grab;
+    padding: 1em;
+  }
+.note-input {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    color: rgba(0, 0, 0, 0.8);
+    outline: none;
+    font-family: inherit;
+    background-color: rgba(255, 255, 255, 0.9); /* Example background color */
+    text-align: left;
+    text-wrap: wrap;
+    display: block;
+    padding-block: 0;
+    padding-inline: 0;
+    line-height: 1.5;
+    padding: 0.5em;
+    resize: none;
+    z-index: 100;
+
+}
+
+.note-text {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, 0.9);
+    color: black;
+    padding: 0.5em;
+    box-shadow: rgba(0, 0, 0, 0.4) 0px 2px 4px, rgba(0, 0, 0, 0.3) 0px 7px 13px -3px, rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
+    text-wrap: wrap;
+    z-index: 100;
+    word-wrap: break-word;
+}
+
+.note-resize-container{
+    display:none
+}
+
+
+
+.visibility-button {
+    padding: 0.5em;
+    border: none;
+    font-size: 0.8em;
+    cursor: pointer;
+    pointer-events: auto;
+    
+}
+
+.button {
+    outline: none;
+    background: none;
+    color: black;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 1em;
+}
+
+.note-options {
+    display: none;
+    align-items: flex-end;
+    justify-content: flex-end;
+    position: absolute;
+    top: 0;
+    right: 0;
+    gap: 0;
+    margin: 0;
+    gap: 0;
+
+}
+
+.note-delete {
+    color: darkred;
+ }
+
+ .note:hover .note-options {
+    display: flex; 
+}
+
+.note:hover .note-resize-container{
+    display: flex;
+}

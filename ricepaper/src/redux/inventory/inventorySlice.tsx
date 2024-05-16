@@ -33,8 +33,8 @@ const inventorySlice = createSlice({
         inventoryItemsSet: (state, action) => {
             state.inventoryItems = action.payload;
         },
-        fullUpdate: (_, action) => {
-            return action.payload.inventoryItems;
+        inventorySynced: (state, action) => {
+            state.inventoryItems = action.payload;
         }
     },
 });
@@ -44,7 +44,7 @@ export const {
     inventoryItemRemoved,
     inventoryItemLabelUpdated,
     inventoryItemsSet,
-    fullUpdate
+    inventorySynced,
  } = inventorySlice.actions;
 export default inventorySlice.reducer;
 

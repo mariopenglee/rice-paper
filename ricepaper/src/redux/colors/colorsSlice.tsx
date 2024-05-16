@@ -2,7 +2,6 @@ import { createSlice } from "@reduxjs/toolkit";
 import type { RootState } from '../store';
 
 const initialState = {
-
     colors:[
         '#0D0D0D', 
         '#4D4D4D', 
@@ -15,8 +14,7 @@ const initialState = {
     selectedColor: {
         color: '#0D0D0D',
         index: 0
-    },
-    backgroundColor: '#FFF8DC'
+    }
 };
 
 const colorsSlice = createSlice({
@@ -37,8 +35,8 @@ const colorsSlice = createSlice({
         colorSelected: (state, action) => {
             state.selectedColor = action.payload;
         },
-        fullUpdate: (_, action) => {
-            return action.payload.colors;
+        colorSynced: (state, action) => {
+            state.colors = action.payload;
         }
 
     },
@@ -49,12 +47,10 @@ export const {
     colorRemoved,
     colorSelected,
     selectedColorUpdated,
-    fullUpdate
+    colorSynced
  } = colorsSlice.actions;
 
 export default colorsSlice.reducer;
 
 export const selectColors = (state: RootState) => state.colors.colors;
 export const selectSelectedColor = (state: RootState) => state.colors.selectedColor;
-export const selectBackgroundColor = (state: RootState) => state.colors.backgroundColor;
-

@@ -15,6 +15,7 @@ import {
   tokenResized,
   selectedTokensMoved,
   selectedTokensResized,
+  selectedTokensLabelUpdated,
   selectSelectedTokens,
 } from '../redux/tokens/tokensSlice';
 
@@ -161,13 +162,10 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
   };
 
   // renaming
-
   const handleLabelUpdate = (newLabel: string) => {
     // Dispatch an action to update the label for all selected tokens
     if (selected) {
-      selectedTokens.forEach((token: TokenType) => {
-        dispatch(tokenLabelUpdated({ id: token.id, label: newLabel }));
-      });
+      dispatch(selectedTokensLabelUpdated({ label: newLabel }));
     }
     else {
       dispatch(tokenLabelUpdated({ id: token.id, label: newLabel }));
@@ -523,6 +521,7 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
                 autoSave='true'
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+
                     setIsRenaming(false);
                     
                   }

@@ -62,6 +62,17 @@ const tokensSlice = createSlice({
             return token;
             });
         },
+        selectedTokensLabelUpdated: (state, action) => {
+            state.tokens = state.tokens.map(token => {
+            if (state.selectedTokens.some(selectedToken => selectedToken.id === token.id)) {
+                return {
+                ...token,
+                label: action.payload.label,
+                };
+            }
+            return token;
+            });
+        },
         tokenLabelUpdated: (state, action) => {
             state.tokens = state.tokens.map(token => {
             if (token.id === action.payload.id) {
@@ -100,9 +111,9 @@ const tokensSlice = createSlice({
             return token;
             });
         },
-        fullUpdate: (_, action) => {
-            return action.payload.tokens;
-        },
+        tokenSynced: (state, action) => {
+            state.tokens = action.payload;
+        }
     },
 
 });
@@ -115,9 +126,12 @@ export const {
     tokenLabelUpdated, 
     tokenLabelVisibilityToggled, 
     selectedTokensMoved,
+    selectedTokensLabelUpdated,
     tokenResized,
     selectedTokensResized,
-    tokenDraggingStarted } = tokensSlice.actions;
+    tokenDraggingStarted,
+    tokenSynced,
+ } = tokensSlice.actions;
 
 export default tokensSlice.reducer;
 

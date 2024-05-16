@@ -8,7 +8,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import Alpha from '@uiw/react-color-alpha';
-
+import { LayerType } from '../redux/store';
 import { 
     gridWidth,
     gridHeight,
@@ -20,13 +20,14 @@ import {
     layerSelected,
     layerOpacityUpdated,
     layerVisibilityToggled, 
+    layerLabelUpdated,
 } from '../redux/layers/layersSlice';
 
 import { useDispatch } from 'react-redux';
 
 import './LayerPreview.css';
 interface LayerPreviewProps {
-    layer: LayerData;
+    layer: LayerType;
     tokens: TokenType[];
     selected: boolean;
 }
@@ -42,20 +43,12 @@ export interface TokenType {
     id: string;
   }
 
-interface LayerData {
-    id: string; 
-    cells: { [key: string]: string }; // Key is the cell position, value is the color
-    opacity: number;
-    background: string;
-    visibility: boolean;
-}
 
 const LayerPreview = ({ layer, selected, tokens }: LayerPreviewProps) => {
     const [renaming, setRenaming] = useState(false);
-    const [layerName, setLayerName] = useState('New Layer');
     const controls = useDragControls();
     const dispatch = useDispatch();
-    const calculateLayerBounds = (layer: LayerData) => {
+    const calculateLayerBounds = (layer: LayerType) => {
         let minX = gridWidth;
         let maxX = 0;
         let minY = gridHeight;
@@ -71,7 +64,7 @@ const LayerPreview = ({ layer, selected, tokens }: LayerPreviewProps) => {
     };
 
     
-    const renderLayerPreview = (layer: LayerData) => {
+    const renderLayerPreview = (layer: LayerType) => {
         const previewSize = 50; // Size of the preview square
         const bounds = calculateLayerBounds(layer);
     
@@ -81,7 +74,7 @@ const LayerPreview = ({ layer, selected, tokens }: LayerPreviewProps) => {
         const scale = Math.min(previewSize / layerWidth, previewSize / layerHeight);
         const cells = Object.entries(layer.cells).map(([key, value]) => {
             const [gridX, gridY] = key.split('-').map(Number);
-            console.log('Rendering cell:', { gridX, gridY, key, value });
+            //console.log('Rendering cell:', { gridX, gridY, key, value });
             const cellStyle: React.CSSProperties = {
                 position: 'absolute',
                 left: `${(gridX - bounds.minX) * scale}px`,
@@ -197,8 +190,8 @@ const LayerPreview = ({ layer, selected, tokens }: LayerPreviewProps) => {
                 <input 
                 
                 className='layer-name-input'
-                value={layerName}
-                onChange={(e) => setLayerName(e.target.value)}
+                value={layer.label}
+                onChange={(e) => dispatch(layerLabelUpdated({ id: layer.id, label: e.target.value }))}
                 onBlur={() => setRenaming(false)}
                 />
                 <button
@@ -211,7 +204,7 @@ const LayerPreview = ({ layer, selected, tokens }: LayerPreviewProps) => {
                 <>
                 <span 
                 className='layer-name'
-                >{layerName}</span>
+                >{layer.label}</span>
                 <button 
                 className={'rename-button'}
                 onClick={() => setRenaming(true)}
