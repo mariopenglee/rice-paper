@@ -24,6 +24,7 @@ export interface RootState {
   notes: ReturnType<typeof notesReducer>;
 }
 let socket: Socket;
+let updatingFromServer = false;
 
 
 // Load state from the backend
@@ -106,52 +107,85 @@ export const initializeStore = async (mapId : string) => {
   const debouncedSaveState = debounce(saveState, 1000);
 
   store.subscribe(() => {
-    const currentState = store.getState();
-    console.log('State updated', currentState);
-    debouncedSaveState(mapId, currentState);
+    if (!updatingFromServer) {
+      const currentState = store.getState();
+      console.log('State updated', currentState);
+      debouncedSaveState(mapId, currentState);
+    }
   });
 
 
-  socket = io(BACKEND_URL);
-  socket.emit('joinMap', mapId);
+  const connectSocket = () => {
+    socket = io(BACKEND_URL);
+    socket.emit('joinMap', mapId);
+    socket.on('connect', () => {
+      console.log('Connected to server');
+    });
 
-  socket.on('stateUpdated', (state) => {
-    console.log('Received state update from server', state);
-    const currentState = store.getState();
-    if (JSON.stringify(currentState.layers.layers) !== JSON.stringify(state.layers)) {
-      console.log('currentState.layers.layers', currentState.layers.layers);
-      console.log('state.layers', state.layers);
-      store.dispatch(layerSynced(state.layers));
-      console.log('Dispatched layers update');
-    }
-    if (JSON.stringify(currentState.tokens.tokens) !== JSON.stringify(state.tokens)) {
-      console.log('currentState.tokens.tokens', currentState.tokens.tokens);
-      console.log('state.tokens', state.tokens);
-      store.dispatch(tokenSynced(state.tokens));
-      console.log('Dispatched tokens update');
-    }
-    if (JSON.stringify(currentState.inventory.inventoryItems) !== JSON.stringify(state.inventory)) {
-      console.log('currentState.inventory.inventoryItems', currentState.inventory.inventoryItems);
-      console.log('state.inventory', state.inventory);
-      store.dispatch(inventorySynced(state.inventory));
-      console.log('Dispatched inventory update');
-    }
-    if (JSON.stringify(currentState.colors.colors) !== JSON.stringify(state.colors)) {
-      console.log('currentState.colors.colors', currentState.colors.colors);
-      console.log('state.colors', state.colors);
-      store.dispatch(colorSynced(state.colors));
-      console.log('Dispatched colors update');
-    }
+    socket.on('disconnect', (reason) => {
+      console.error('Disconnected from server', reason);
+      // Try to reconnect after a delay
+      setTimeout(() => {
+        console.log('Reconnecting to server...');
+        connectSocket();
+      }, 5000);
+    });
 
-    if (JSON.stringify(currentState.notes.notes) !== JSON.stringify(state.notes)) {
-      console.log('currentState.notes.notes', currentState.notes.notes);
-      console.log('state.notes', state.notes);
-      store.dispatch(noteSynced(state.notes));
-      console.log('Dispatched notes update');
-    }
+    socket.on('connect_error', (error) => {
+      console.error('Connection error', error);
+      // Try to reconnect after a delay
+      setTimeout(() => {
+        console.log('Reconnecting to server...');
+        connectSocket();
+      }, 5000);
+    });
 
-  }
-  );
+    socket.on('stateUpdated', (state) => {
+      updatingFromServer = true
+      console.log('Received state update from server', state);
+      const currentState = store.getState();
+      if (JSON.stringify(currentState.layers.layers) !== JSON.stringify(state.layers)) {
+        console.log('currentState.layers.layers', currentState.layers.layers);
+        console.log('state.layers', state.layers);
+        store.dispatch(layerSynced(state.layers));
+        console.log('Dispatched layers update');
+      }
+      if (JSON.stringify(currentState.tokens.tokens) !== JSON.stringify(state.tokens)) {
+        console.log('currentState.tokens.tokens', currentState.tokens.tokens);
+        console.log('state.tokens', state.tokens);
+        store.dispatch(tokenSynced(state.tokens));
+        console.log('Dispatched tokens update');
+      }
+      if (JSON.stringify(currentState.inventory.inventoryItems) !== JSON.stringify(state.inventory)) {
+        console.log('currentState.inventory.inventoryItems', currentState.inventory.inventoryItems);
+        console.log('state.inventory', state.inventory);
+        store.dispatch(inventorySynced(state.inventory));
+        console.log('Dispatched inventory update');
+      }
+      if (JSON.stringify(currentState.colors.colors) !== JSON.stringify(state.colors)) {
+        console.log('currentState.colors.colors', currentState.colors.colors);
+        console.log('state.colors', state.colors);
+        store.dispatch(colorSynced(state.colors));
+        console.log('Dispatched colors update');
+      }
+  
+      if (JSON.stringify(currentState.notes.notes) !== JSON.stringify(state.notes)) {
+        console.log('currentState.notes.notes', currentState.notes.notes);
+        console.log('state.notes', state.notes);
+        store.dispatch(noteSynced(state.notes));
+        console.log('Dispatched notes update');
+      }
+      updatingFromServer = false;
+  
+    }
+    );
+  
+
+
+  };
+
+  
+  connectSocket();
 
   return store;
 };
