@@ -26,6 +26,9 @@ export interface RootState {
 let socket: Socket;
 let updatingFromServer = false;
 
+let reconnectionAttempts = 0;
+const MAX_RECONNECTION_ATTEMPTS = 10;
+
 
 // Load state from the backend
 const loadState = async (mapId: string): Promise<RootState | undefined> => {
@@ -116,7 +119,11 @@ export const initializeStore = async (mapId : string) => {
 
 
   const connectSocket = () => {
-    socket = io(BACKEND_URL);
+    socket = io(BACKEND_URL, {
+      reconnectionAttempts: MAX_RECONNECTION_ATTEMPTS, // Maximum number of reconnection attempts
+      reconnectionDelay: 5000, // Time between reconnection attempts
+    });
+  
     socket.emit('joinMap', mapId);
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -124,11 +131,21 @@ export const initializeStore = async (mapId : string) => {
 
     socket.on('disconnect', (reason) => {
       console.error('Disconnected from server', reason);
-      // Try to reconnect after a delay
-      setTimeout(() => {
-        console.log('Reconnecting to server...');
-        connectSocket();
-      }, 5000);
+      if (reconnectionAttempts < MAX_RECONNECTION_ATTEMPTS) {
+        console.log(`Reconnecting to server (attempt ${reconnectionAttempts + 1})...`);
+        reconnectionAttempts++;
+      } else {
+        console.error('Max reconnection attempts reached. Unable to reconnect.');
+      }
+  
+    });
+
+    socket.on('reconnect_attempt', () => {
+      console.log(`Reconnection attempt ${reconnectionAttempts + 1}...`);
+    });
+  
+    socket.on('reconnect_failed', () => {
+      console.error('Reconnection failed. Attempting again...');
     });
 
     socket.on('connect_error', (error) => {
@@ -186,6 +203,14 @@ export const initializeStore = async (mapId : string) => {
 
   
   connectSocket();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !socket.connected) {
+      console.log('Tab is visible again. Reconnecting...');
+      connectSocket();
+    }
+  });
+
 
   return store;
 };
