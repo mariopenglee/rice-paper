@@ -104,13 +104,28 @@ export const initializeStore = async (mapId : string) => {
 
 
   // Debounce saveState to avoid saving state too often
-  const debouncedSaveState = debounce(saveState, 1000);
+  const debouncedSaveState = debounce(async (mapId: string, state: RootState) => {
+    await saveState(mapId, state);
+  }, 1000);
 
-  store.subscribe(() => {
+  store.subscribe(async () => {
     if (!updatingFromServer) {
       const currentState = store.getState();
       console.log('State updated', currentState);
-      debouncedSaveState(mapId, currentState);
+      await debouncedSaveState(mapId, currentState);
+      
+      // After saving, load the state from the server
+      const newState = await loadState(mapId);
+      if (newState) {
+        updatingFromServer = true;
+        // Update the store with the new state from the server
+        store.dispatch(layerSynced(newState.layers.layers));
+        store.dispatch(tokenSynced(newState.tokens.tokens));
+        store.dispatch(inventorySynced(newState.inventory.inventoryItems));
+        store.dispatch(colorSynced(newState.colors.colors));
+        store.dispatch(noteSynced(newState.notes.notes));
+        updatingFromServer = false;
+      }
     }
   });
 
