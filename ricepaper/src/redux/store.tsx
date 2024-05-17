@@ -12,8 +12,9 @@ import { io, Socket } from 'socket.io-client';
 import { debounce } from 'lodash';
 
 
-const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
+//const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
 //const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = 'https://ricepaper-backend-870ac271f759.herokuapp.com';
 export interface RootState {
   layers: ReturnType<typeof layersReducer>;
   tokens: ReturnType<typeof tokensReducer>;
