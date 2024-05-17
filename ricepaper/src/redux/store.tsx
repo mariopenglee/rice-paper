@@ -88,6 +88,19 @@ const saveState = async (mapId : string, state : RootState) => {
   }
 };
 
+// Fetch and update state after reconnection
+const fetchAndUpdateState = async (store: any, mapId: string) => {
+  const state = await loadState(mapId);
+  if (state) {
+    store.dispatch(layerSynced(state.layers.layers));
+    store.dispatch(tokenSynced(state.tokens.tokens));
+    store.dispatch(inventorySynced(state.inventory.inventoryItems));
+    store.dispatch(colorSynced(state.colors.colors));
+    store.dispatch(noteSynced(state.notes.notes));
+    console.log('State updated after reconnection');
+  }
+};
+
 
 // Initialize store with preloaded state
 export const initializeStore = async (mapId : string) => {
@@ -127,6 +140,8 @@ export const initializeStore = async (mapId : string) => {
     socket.emit('joinMap', mapId);
     socket.on('connect', () => {
       console.log('Connected to server');
+      reconnectionAttempts = 0; 
+      fetchAndUpdateState(store, mapId); 
     });
 
     socket.on('disconnect', (reason) => {
