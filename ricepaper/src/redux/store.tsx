@@ -129,7 +129,7 @@ export const initializeStore = async (mapId: string) => {
     } catch (error) {
       console.error('Could not fetch state', error);
       // Show a message to the user
-      document.getElementById('connectivity-warning')!.style.display = 'block';
+      alert('Could not fetch state from the server');
     }
   };
 
@@ -138,20 +138,6 @@ export const initializeStore = async (mapId: string) => {
 
   return store;
 };
-
-// Add connectivity warning element to the DOM
-const connectivityWarning = document.createElement('div');
-connectivityWarning.id = 'connectivity-warning';
-connectivityWarning.innerText = 'Please connect to the internet to use this app.';
-connectivityWarning.style.display = 'none'; // Initially hidden
-connectivityWarning.style.position = 'fixed';
-connectivityWarning.style.top = '0';
-connectivityWarning.style.width = '100%';
-connectivityWarning.style.backgroundColor = 'red';
-connectivityWarning.style.color = 'white';
-connectivityWarning.style.textAlign = 'center';
-connectivityWarning.style.padding = '10px';
-document.body.appendChild(connectivityWarning);
 
 const typeStore = configureStore({
   reducer: {
