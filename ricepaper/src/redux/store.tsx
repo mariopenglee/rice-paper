@@ -14,7 +14,7 @@ import { debounce } from 'lodash';
 
 //const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
 //const BACKEND_URL = 'http://localhost:3000';
-const BACKEND_URL = 'https://ricepaper-backend.adaptable.app/';
+const BACKEND_URL = 'https://ricepaper-backend.adaptable.app';
 export interface RootState {
   layers: ReturnType<typeof layersReducer>;
   tokens: ReturnType<typeof tokensReducer>;
