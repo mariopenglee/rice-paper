@@ -72,9 +72,7 @@ const loadState = async (mapId: string): Promise<RootState | undefined> => {
 // Save state to the backend
 const saveState = async (mapId : string, state : RootState) => {
   if (!isConnected) {
-    console.warn('Cannot save state: Disconnected from server');
-    // reload state from server
-    fetchAndUpdateState(typeStore, mapId);
+    alert('Cannot save state: Disconnected from server');
     return;
   }
   try {
