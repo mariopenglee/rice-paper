@@ -73,6 +73,8 @@ const loadState = async (mapId: string): Promise<RootState | undefined> => {
 const saveState = async (mapId : string, state : RootState) => {
   if (!isConnected) {
     alert('Cannot save state: Disconnected from server');
+    // reload page to reconnect
+    window.location.reload();
     return;
   }
   try {
