@@ -140,7 +140,6 @@ export const initializeStore = async (mapId : string) => {
 
   const connectSocket = () => {
     socket = io(BACKEND_URL, {
-      secure: true,
       transports: ['websocket'],
       reconnectionAttempts: MAX_RECONNECTION_ATTEMPTS, // Maximum number of reconnection attempts
       reconnectionDelay: 5000, 
