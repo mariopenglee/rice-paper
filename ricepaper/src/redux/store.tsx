@@ -153,6 +153,7 @@ export const initializeStore = async (mapId : string) => {
     socket.on('disconnect', (reason) => {
       console.error('Disconnected from server', reason);
       isConnected = false; 
+      window.location.reload();
       if (reconnectionAttempts < MAX_RECONNECTION_ATTEMPTS) {
         console.log(`Reconnecting to server (attempt ${reconnectionAttempts + 1})...`);
         reconnectionAttempts++;
