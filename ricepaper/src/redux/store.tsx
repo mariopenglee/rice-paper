@@ -87,7 +87,8 @@ const saveState = async (mapId : string, state : RootState) => {
     console.log('Saving state to server', state);
     await axios.post(BACKEND_URL + `/api/state/${mapId}`,
      { state: relevantState });
-     socket.emit('stateUpdated', relevantState);
+
+     socket.emit('stateUpdated', mapId, relevantState);
     
   } catch (error) {
     console.error('Could not save state', error);
@@ -139,6 +140,7 @@ export const initializeStore = async (mapId : string) => {
 
   const connectSocket = () => {
     socket = io(BACKEND_URL, {
+      transports: ['websocket'],
       reconnectionAttempts: MAX_RECONNECTION_ATTEMPTS, // Maximum number of reconnection attempts
       reconnectionDelay: 5000, 
       // time out after 10 minutes of inactivity
