@@ -12,8 +12,7 @@ import { io, Socket } from 'socket.io-client';
 import { debounce } from 'lodash';
 
 
-//const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
-//const BACKEND_URL = 'http://localhost:3000';
+//const BACKEND_URL = 'http://0.0.0.0:3000';
 const BACKEND_URL = 'https://ricepaper-backend.adaptable.app';
 export interface RootState {
   layers: ReturnType<typeof layersReducer>;
@@ -74,7 +73,7 @@ const saveState = async (mapId : string, state : RootState) => {
   if (!isConnected) {
     alert('Cannot save state: Disconnected from server');
     // reload page to reconnect
-    window.location.reload();
+    // window.location.reload();
     return;
   }
   try {
@@ -139,7 +138,9 @@ export const initializeStore = async (mapId : string) => {
   const connectSocket = () => {
     socket = io(BACKEND_URL, {
       reconnectionAttempts: MAX_RECONNECTION_ATTEMPTS, // Maximum number of reconnection attempts
-      reconnectionDelay: 5000, // Time between reconnection attempts
+      reconnectionDelay: 5000, 
+      timeout: 10000,
+
     });
   
     socket.emit('joinMap', mapId);
@@ -151,7 +152,10 @@ export const initializeStore = async (mapId : string) => {
     });
 
     socket.on('disconnect', (reason) => {
-      console.error('Disconnected from server', reason);
+      alert('Disconnected from server. Reason: ' + reason);
+
+      
+
       isConnected = false; 
       window.location.reload();
       if (reconnectionAttempts < MAX_RECONNECTION_ATTEMPTS) {

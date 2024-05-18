@@ -1,8 +1,8 @@
 // NewMap.jsx
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-//const BACKEND_URL = 'https://rice-paper-backend.vercel.app';
-//const BACKEND_URL = 'http://localhost:3000';
+
+//const BACKEND_URL = 'http://0.0.0.0:3000';
 const BACKEND_URL = 'https://ricepaper-backend.adaptable.app';
 const NewMap = () => {
   const navigate = useNavigate();
