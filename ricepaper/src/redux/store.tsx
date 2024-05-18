@@ -28,7 +28,7 @@ let updatingFromServer = false;
 
 let reconnectionAttempts = 0;
 const MAX_RECONNECTION_ATTEMPTS = 10;
-
+let isConnected = false
 
 // Load state from the backend
 const loadState = async (mapId: string): Promise<RootState | undefined> => {
@@ -71,7 +71,12 @@ const loadState = async (mapId: string): Promise<RootState | undefined> => {
 
 // Save state to the backend
 const saveState = async (mapId : string, state : RootState) => {
-  
+  if (!isConnected) {
+    console.warn('Cannot save state: Disconnected from server');
+    // reload state from server
+    fetchAndUpdateState(typeStore, mapId);
+    return;
+  }
   try {
     const relevantState = {
       layers: state.layers.layers,
@@ -140,12 +145,14 @@ export const initializeStore = async (mapId : string) => {
     socket.emit('joinMap', mapId);
     socket.on('connect', () => {
       console.log('Connected to server');
+      isConnected = true; 
       reconnectionAttempts = 0; 
       fetchAndUpdateState(store, mapId); 
     });
 
     socket.on('disconnect', (reason) => {
       console.error('Disconnected from server', reason);
+      isConnected = false; 
       if (reconnectionAttempts < MAX_RECONNECTION_ATTEMPTS) {
         console.log(`Reconnecting to server (attempt ${reconnectionAttempts + 1})...`);
         reconnectionAttempts++;
