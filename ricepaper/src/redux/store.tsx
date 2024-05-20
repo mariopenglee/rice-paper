@@ -162,7 +162,7 @@ export const initializeStore = async (mapId : string) => {
       
 
       isConnected = false; 
-      window.location.reload();
+      // window.location.reload();
       if (reconnectionAttempts < MAX_RECONNECTION_ATTEMPTS) {
         console.log(`Reconnecting to server (attempt ${reconnectionAttempts + 1})...`);
         reconnectionAttempts++;
