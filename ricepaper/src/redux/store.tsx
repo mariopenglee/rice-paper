@@ -172,6 +172,12 @@ export const initializeStore = async (mapId : string) => {
   
     });
 
+    socket.on('ping', () => {
+      console.log(`got ping from server`);
+      socket.emit("pong", {})
+    });
+  
+
     socket.on('reconnect_attempt', () => {
       console.log(`Reconnection attempt ${reconnectionAttempts + 1}...`);
     });
