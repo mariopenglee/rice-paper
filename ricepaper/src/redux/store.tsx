@@ -13,7 +13,8 @@ import { debounce } from 'lodash';
 
 
 //const BACKEND_URL = 'http://0.0.0.0:3000';
-const BACKEND_URL = 'https://ricepaper-backend.adaptable.app';
+//const BACKEND_URL = 'https://ricepaper-backend.adaptable.app';
+const BACKEND_URL = 'https://starfish-app-qe9pj.ondigitalocean.app';
 export interface RootState {
   layers: ReturnType<typeof layersReducer>;
   tokens: ReturnType<typeof tokensReducer>;
