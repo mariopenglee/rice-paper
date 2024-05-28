@@ -151,7 +151,7 @@ const saveState = async (mapId : string, relevantState: RelevantState) => {
 
     
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Could not save state', error);
     if (error.response && error.response.status === 409) {
       console.error('Conflict detected. Reloading state...');
