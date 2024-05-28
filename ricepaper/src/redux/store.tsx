@@ -5,6 +5,7 @@ import inventoryReducer, {inventorySynced} from './inventory/inventorySlice';
 import currentToolReducer from './currentTool/currentToolSlice';
 import colorsReducer, {colorSynced} from './colors/colorsSlice';
 import notesReducer, {noteSynced} from './notes/notesSlice';
+import localVarsReducer from './localVars/localVarsSlice';
 import { configureStore } from '@reduxjs/toolkit'
 // import { loadState, saveState } from '../utils/localStorage';
 import axios from 'axios';
@@ -49,6 +50,7 @@ export interface RootState {
   currentTool: ReturnType<typeof currentToolReducer>;
   colors: ReturnType<typeof colorsReducer>;
   notes: ReturnType<typeof notesReducer>;
+  localVars: ReturnType<typeof localVarsReducer>;
 }
 
 export interface RelevantState {
@@ -99,6 +101,9 @@ const loadState = async (mapId: string): Promise<RootState | undefined> => {
         notes: state.notes || [],
         selectedNotes: [],
         },
+      localVars: { 
+        zoomLevel: 2.5,
+      },
     };
     console.log('formattedState', formattedState);
     return formattedState;
@@ -186,6 +191,7 @@ export const initializeStore = async (mapId : string) => {
       currentTool: currentToolReducer,
       colors: colorsReducer,
       notes: notesReducer,
+      localVars: localVarsReducer,
     },
     preloadedState,
   });
@@ -333,6 +339,7 @@ const typeStore = configureStore({
     currentTool: currentToolReducer,
     colors: colorsReducer,
     notes: notesReducer,
+    localVars: localVarsReducer,
   },
 });
 // Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}

@@ -20,6 +20,9 @@ import {
 } from '../redux/tokens/tokensSlice';
 
 import {
+  selectZoomLevel,
+} from '../redux/localVars/localVarsSlice';
+import {
   selectPressingShift,
 } from '../redux/currentTool/currentToolSlice';
 
@@ -37,6 +40,8 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
     x: token.x,
     y: token.y,
   });
+
+  const zoomLevel = useSelector(selectZoomLevel);
 
   const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -105,7 +110,9 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
     const { x : DotX, y: DotY } = roundToNearestDot(
       x - token.width / 2,
       y - token.height / 2, 
-      gridRef);
+      gridRef,
+      zoomLevel,
+    );
     if (previewPositions.x !== DotX ||
       previewPositions.y !== DotY) {
     setPreviewPositions({
@@ -325,16 +332,16 @@ const Token = ({ token, inventoryRef, gridRef }: TokenProps) => {
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           opacity: overInventory ? 0.5 : selected ? 0.8 : 1,
-          border: selected ? '2px dashed lightgray' : 'none',
+          border: selected ? '2px dashed lightgray' : '1px solid black',
           
         }}
         drag
         dragMomentum={false}
-        layout
         transition={{
-          type: 'spring',
-          stiffness: 200,
-          damping: 25,
+          // type: 'spring',
+          // stiffness: 200,
+          // damping: 25,
+          duration: 0,
         }}
         dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
         dragElastic={0}

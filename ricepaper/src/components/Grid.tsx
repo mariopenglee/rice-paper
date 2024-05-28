@@ -32,6 +32,10 @@ import {
     gridHeight,
  } from '../utils';
 import { useSelector, useDispatch } from 'react-redux';
+import {
+    selectZoomLevel,
+    zoomLevelUpdated,
+} from '../redux/localVars/localVarsSlice';
 import { 
     layerAdded,
     layerBackgroundUpdated, 
@@ -110,6 +114,28 @@ const Grid: React.FC = () => {
     
     // Note states
     const notes = useSelector(selectNotes);
+
+    // zoom states
+    const zoomLevel = useSelector(selectZoomLevel);
+    const handleZoomIn = () => {
+        // setZoomLevel((prevZoom) => Math.min(prevZoom * 1.1, 6)); // Limit the maximum zoom level
+        dispatch(zoomLevelUpdated(Math.min(zoomLevel * 1.1, 6)));
+    };
+    
+    const handleZoomOut = () => {
+        //setZoomLevel((prevZoom) => Math.max(prevZoom / 1.1, 1)); // Limit the minimum zoom level
+        dispatch(zoomLevelUpdated(Math.max(zoomLevel / 1.1, 1)));
+    };
+    
+    
+
+    const gridStyle = {
+        width: `${gridWidth * cellSize * zoomLevel}px`,
+        height: `${gridHeight * cellSize * zoomLevel}px`,
+        transform: `scale(${zoomLevel})`,
+        transformOrigin: '0 0', // Ensures the zoom is anchored to the top-left corner
+    };
+    
 
 
     const lookupLayerIndex = useCallback((id: string) => {
@@ -206,7 +232,7 @@ const Grid: React.FC = () => {
 
 
 
-    const dotSize = 2; // Size of the dots
+    const dotSize = 1; // Size of the dots
     const dots = [];
     for (let i = 0; i <= gridWidth; i++) {
         for (let j = 0; j <= gridHeight; j++) {
@@ -396,7 +422,7 @@ const Grid: React.FC = () => {
 
     const handleMouseMove = (event: React.MouseEvent) => {
         const { clientX, clientY } = event;
-        const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef);
+        const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef, zoomLevel);
         
         if (isDrawingRectangle) {
             
@@ -418,7 +444,7 @@ const Grid: React.FC = () => {
         }
         else if (tool === 'select' && isSelecting) {
             const { startX, startY, endX, endY } = selectionPreview;
-            const { x: gridX, y: gridY} = accountForScroll(clientX, clientY, gridRef);
+            const { x: gridX, y: gridY} = accountForScroll(clientX, clientY, gridRef, zoomLevel);
             if (endX !== gridX || endY !== gridY) {
                 setSelectionPreview({ startX, startY, endX: gridX, endY: gridY, show: true });
             }
@@ -428,7 +454,7 @@ const Grid: React.FC = () => {
 
         if (isDrawingRectangle) {
             const { clientX, clientY } = event;
-            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef, zoomLevel);
             setRectanglePreview({ startX: 0, startY: 0, endX: 0, endY: 0, show: false });
             if (tool === 'paintbrush') {
             paintRectangle(rectangleStart.x, rectangleStart.y, gridX, gridY);
@@ -561,7 +587,7 @@ const Grid: React.FC = () => {
         const { clientX, clientY } = event;
 
         if (tool === 'paintbrush') {
-        const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef);
+        const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef, zoomLevel);
 
 
         if (event.shiftKey) {
@@ -577,7 +603,7 @@ const Grid: React.FC = () => {
         setPainting(true);
         }
         else if (tool === 'token') {
-            const { x, y } = roundToNearestDot(clientX, clientY, gridRef);
+            const { x, y } = roundToNearestDot(clientX, clientY, gridRef, zoomLevel);
             const newToken: TokenType = {
                 id: uuidv4(),
                 x,
@@ -593,7 +619,7 @@ const Grid: React.FC = () => {
             dispatch(tokenAdded(newToken));
         }
         else if (tool === 'erase') {
-            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef, zoomLevel);
             
             if (event.shiftKey) {
                 // start drawing a rectangle
@@ -608,7 +634,7 @@ const Grid: React.FC = () => {
             setErasing(true);
         }
         else if (tool === 'fill') {
-            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef);
+            const { gridX, gridY } = getCellFromCursorPosition(clientX, clientY, gridRef, zoomLevel);
             const cellKey = `${gridX}-${gridY}`;
             const targetColor = layers[lookupLayerIndex(selectedLayer)].cells[cellKey];
             const bounded = !willFloodFillReachBorder(gridX, gridY, targetColor);
@@ -623,7 +649,7 @@ const Grid: React.FC = () => {
             }
         }
         else if (tool === 'select') {
-            const { x: gridX, y: gridY } = accountForScroll(clientX, clientY, gridRef);
+            const { x: gridX, y: gridY } = accountForScroll(clientX, clientY, gridRef, zoomLevel);
             setIsSelecting(true);
             setSelectionPreview({ 
                 startX: gridX,
@@ -634,7 +660,7 @@ const Grid: React.FC = () => {
         }
         else if (tool === 'note') {
             // alert('Warning, notes are not yet fully implemented');
-            const { x, y } = accountForScroll(clientX-50, clientY-25, gridRef);
+            const { x, y } = accountForScroll(clientX-50, clientY-25, gridRef, zoomLevel);
             
             const newNote: NoteType = {
                 id: uuidv4(),
@@ -880,14 +906,15 @@ gridRef={gridRef}
                     height: '100%',
                     backgroundColor: `${initialColor}`,
                     zIndex: -10,
+                    overflow: 'hidden',
                  }}
             >
-                {renderedLayerBackgrounds}
+                
 
                     <div 
                className="grid" 
                ref={gridRef}
-               //prevent defaults
+                style={gridStyle}
                onPointerDown={(event) => {
                      handleMouseDown(event);
                 }
@@ -898,8 +925,9 @@ gridRef={gridRef}
                 }
             }
                 onPointerMove={handleMouseMove}
+                //onWheel={handleWheel}
                >
-                
+                {renderedLayerBackgrounds}
                 {renderedLayersAndTokens}
                 {dots}
                 {renderRectanglePreview()}
@@ -909,6 +937,11 @@ gridRef={gridRef}
                 
        
 </div>
+{/* Add Zoom Controls */}
+<div className="zoom-controls">
+            <button onClick={handleZoomIn}>Zoom In</button>
+            <button onClick={handleZoomOut}>Zoom Out</button>
+        </div>
 
             </div>
         </>

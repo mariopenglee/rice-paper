@@ -18,6 +18,10 @@ import {
     selectDraggingTokens,
   } from '../redux/tokens/tokensSlice';
 
+import {
+    selectZoomLevel,
+} from '../redux/localVars/localVarsSlice';
+
 import { TokenType } from '../redux/store';
 interface InventoryProps {
     innerRef: any;
@@ -48,7 +52,9 @@ export default function Inventory({ innerRef, gridRef }: InventoryProps) {
     const [isOnGrid, setIsOnGrid] = useState(false);
     const [editingToken, setEditingToken] = useState<string | null>(null);
 
+
     const dispatch = useDispatch();
+    const zoomLevel = useSelector(selectZoomLevel);
     const selectedLayer = useSelector(selectSelectedLayer);
     const selectedColor = useSelector(selectSelectedColor);
     const draggingTokens = useSelector(selectDraggingTokens);
@@ -99,7 +105,7 @@ export default function Inventory({ innerRef, gridRef }: InventoryProps) {
             console.log('off grid');
             setIsOnGrid(false);
         }
-        const { x: DotX, y: DotY } = roundToNearestDot(x, y, gridRef);
+        const { x: DotX, y: DotY } = roundToNearestDot(x, y, gridRef, zoomLevel);
         if (previewPositions.x !== DotX ||
             previewPositions.y !== DotY) {
           setPreviewPositions({
@@ -111,7 +117,7 @@ export default function Inventory({ innerRef, gridRef }: InventoryProps) {
 
     const handleDragEnd = (x: number, y: number) => {
         if (!overInventory && isOnGrid && token) {
-            const { x: DotX, y: DotY } = roundToNearestDot(x, y, gridRef);
+            const { x: DotX, y: DotY } = roundToNearestDot(x, y, gridRef, zoomLevel);
             console.log('dropping token on grid');
             dispatch(tokenAdded({
                 

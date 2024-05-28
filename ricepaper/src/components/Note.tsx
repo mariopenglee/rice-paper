@@ -7,13 +7,17 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import DoneIcon from '@mui/icons-material/Done';
 import { accountForScroll } from '../utils';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   noteRemoved,
   noteMoved,
   noteTextUpdated,
   noteResized,
 } from '../redux/notes/notesSlice';
+
+import {
+  selectZoomLevel,
+} from '../redux/localVars/localVarsSlice';
 import { NoteType } from '../redux/store';
 
 interface NoteProps {
@@ -33,6 +37,7 @@ const Note = ({ note, gridRef }: NoteProps) => {
   const [isResizing, setIsResizing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const dispatch = useDispatch();
+  const zoomLevel = useSelector(selectZoomLevel);
   const handleDragStart = () => {
     console.log('dragging a note');
     if (isEditing) {
@@ -48,7 +53,7 @@ const Note = ({ note, gridRef }: NoteProps) => {
     }
     // account for width and height of the note
     // account for scroll using the accountForScroll function
-    const { x: NewX, y: NewY } = accountForScroll(x - note.width / 2, y - note.height / 2, gridRef);
+    const { x: NewX, y: NewY } = accountForScroll(x - note.width / 2, y - note.height / 2, gridRef, zoomLevel);
     
     if (preview.x !== NewX ||
       preview.y !== NewY) {

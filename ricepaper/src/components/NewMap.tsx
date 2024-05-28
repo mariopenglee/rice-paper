@@ -2,8 +2,8 @@
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-//const BACKEND_URL = 'http://0.0.0.0:3000';
-const BACKEND_URL = 'https://starfish-app-qe9pj.ondigitalocean.app';
+const BACKEND_URL = 'http://0.0.0.0:3000';
+//const BACKEND_URL = 'https://starfish-app-qe9pj.ondigitalocean.app';
 const NewMap = () => {
   const navigate = useNavigate();
 
