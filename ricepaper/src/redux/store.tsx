@@ -10,6 +10,33 @@ import { configureStore } from '@reduxjs/toolkit'
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { debounce } from 'lodash';
+import { isEqual, cloneDeep } from 'lodash';
+
+// Keep track of the previous state
+let previousState: RelevantState | null = null;
+let myversion = 0;
+
+
+const calculateStateDiff = (prevState: RelevantState, currentState: RelevantState) => {
+  const diff: Partial<RelevantState> = {};
+  if (!isEqual(prevState.layers, currentState.layers)) {
+    diff.layers = currentState.layers;
+  }
+  if (!isEqual(prevState.tokens, currentState.tokens)) {
+    diff.tokens = currentState.tokens;
+  }
+  if (!isEqual(prevState.inventory, currentState.inventory)) {
+    diff.inventory = currentState.inventory;
+  }
+  if (!isEqual(prevState.colors, currentState.colors)) {
+    diff.colors = currentState.colors;
+  }
+  if (!isEqual(prevState.notes, currentState.notes)) {
+    diff.notes = currentState.notes;
+  }
+  return diff;
+};
+
 
 
 //const BACKEND_URL = 'http://0.0.0.0:3000';
@@ -23,6 +50,16 @@ export interface RootState {
   colors: ReturnType<typeof colorsReducer>;
   notes: ReturnType<typeof notesReducer>;
 }
+
+export interface RelevantState {
+  layers: LayerType[];
+  tokens: TokenType[];
+  inventory: TokenType[];
+  colors: string[];
+  notes: NoteType[];
+}
+
+
 let socket: Socket;
 let updatingFromServer = false;
 
@@ -36,31 +73,34 @@ const loadState = async (mapId: string): Promise<RootState | undefined> => {
     
     const response = await axios.get(`${BACKEND_URL}/api/state/${mapId}`);
     console.log('Loaded state from server', response.data);
+    myversion = response.data.version;
+    const state = response.data.state;
     const formattedState = {
       layers: { 
-        layers: response.data.layers,
-        selectedLayer: response.data.layers[0].id,
+        layers: state.layers || [],
+        selectedLayer: state.layers[0].id || '',
        },
       tokens: { 
-        tokens: response.data.tokens,
+        tokens: state.tokens || [],
         selectedTokens: [],
         draggingTokens: [],
 
        },
-      inventory: { inventoryItems: response.data.inventory },
+      inventory: { inventoryItems: state.inventory || [] },
       colors: { 
-        colors: response.data.colors,
+        colors: state.colors || [],
         selectedColor: {
-          color: response.data.colors[0],
+          color: state.colors ? state.colors[0] : '#000000',
           index: 0,
         },
        },
        currentTool: { pressingShift: false },
       notes: { 
-        notes: response.data.notes || [],
+        notes: state.notes || [],
         selectedNotes: [],
         },
     };
+    console.log('formattedState', formattedState);
     return formattedState;
 
   } catch (error) {
@@ -70,29 +110,53 @@ const loadState = async (mapId: string): Promise<RootState | undefined> => {
 };
 
 // Save state to the backend
-const saveState = async (mapId : string, state : RootState) => {
+const saveState = async (mapId : string, relevantState: RelevantState) => {
   if (!isConnected) {
     alert('Cannot save state: Disconnected from server');
     // reload page to reconnect
     // window.location.reload();
     return;
   }
-  try {
-    const relevantState = {
-      layers: state.layers.layers,
-      tokens: state.tokens.tokens,
-      inventory: state.inventory.inventoryItems,
-      colors: state.colors.colors,
-      notes: state.notes.notes,
-    };
-    console.log('Saving state to server', state);
-    await axios.post(BACKEND_URL + `/api/state/${mapId}`,
-     { state: relevantState });
 
-     socket.emit('stateUpdated', mapId, relevantState);
+
+
+  try {
+
+    let diff = {};
+
+    if (!previousState) {
+      previousState = cloneDeep(relevantState);
+      diff = relevantState;
+    }
+    else {
+      diff = calculateStateDiff(previousState, relevantState);
+    }
+
+    if (Object.keys(diff).length === 0) {
+      console.log('No state changes detected');
+      return;
+    }
+
+    // update the previous state
+    previousState = cloneDeep(relevantState);
+    // update the version so that we can ignore our own updates
+    myversion++;
+
+    console.log('Saving state to server', diff);
+    await axios.patch(BACKEND_URL + `/api/state/${mapId}`,
+     { state: diff, version: myversion - 1 });
+
+     socket.emit('stateUpdated', diff, myversion);
+    console.log('State saved to server');
+
+    
     
   } catch (error) {
     console.error('Could not save state', error);
+    if (error.response && error.response.status === 409) {
+      console.error('Conflict detected. Reloading state...');
+      fetchAndUpdateState(typeStore, mapId);
+    }
   }
 };
 
@@ -134,7 +198,14 @@ export const initializeStore = async (mapId : string) => {
     if (!updatingFromServer) {
       const currentState = store.getState();
       console.log('State updated', currentState);
-      debouncedSaveState(mapId, currentState);
+      const relevantState = {
+        layers: currentState.layers.layers,
+        tokens: currentState.tokens.tokens,
+        inventory: currentState.inventory.inventoryItems,
+        colors: currentState.colors.colors,
+        notes: currentState.notes.notes,
+      };
+      debouncedSaveState(mapId, relevantState);
     }
   });
 
@@ -196,43 +267,43 @@ export const initializeStore = async (mapId : string) => {
       }, 5000);
     });
 
-    socket.on('stateUpdated', (state) => {
-    updatingFromServer = true
-    console.log('Received state update from server', state);
-    const currentState = store.getState();
-    if (JSON.stringify(currentState.layers.layers) !== JSON.stringify(state.layers)) {
-      console.log('currentState.layers.layers', currentState.layers.layers);
-      console.log('state.layers', state.layers);
-      store.dispatch(layerSynced(state.layers));
-      console.log('Dispatched layers update');
-    }
-    if (JSON.stringify(currentState.tokens.tokens) !== JSON.stringify(state.tokens)) {
-      console.log('currentState.tokens.tokens', currentState.tokens.tokens);
-      console.log('state.tokens', state.tokens);
-      store.dispatch(tokenSynced(state.tokens));
-      console.log('Dispatched tokens update');
-    }
-    if (JSON.stringify(currentState.inventory.inventoryItems) !== JSON.stringify(state.inventory)) {
-      console.log('currentState.inventory.inventoryItems', currentState.inventory.inventoryItems);
-      console.log('state.inventory', state.inventory);
-      store.dispatch(inventorySynced(state.inventory));
-      console.log('Dispatched inventory update');
-    }
-    if (JSON.stringify(currentState.colors.colors) !== JSON.stringify(state.colors)) {
-      console.log('currentState.colors.colors', currentState.colors.colors);
-      console.log('state.colors', state.colors);
-      store.dispatch(colorSynced(state.colors));
-      console.log('Dispatched colors update');
-    }
-
-    if (JSON.stringify(currentState.notes.notes) !== JSON.stringify(state.notes)) {
-      console.log('currentState.notes.notes', currentState.notes.notes);
-      console.log('state.notes', state.notes);
-      store.dispatch(noteSynced(state.notes));
-      console.log('Dispatched notes update');
-    }
-    updatingFromServer = false;
-
+    socket.on('stateUpdated', (state: RelevantState, newVersion: number) => {
+      updatingFromServer = true;
+      
+      console.log('my version', myversion);
+      console.log('new version', newVersion);
+      if (newVersion === myversion) {
+        console.log(`Ignoring state update with version ${newVersion} (my version: ${myversion})`);
+        updatingFromServer = false;
+        return;
+      }
+      else {
+        myversion = newVersion;
+        console.log('Received state update', state);
+      }
+      
+      // if we're the ones who updated the state, we don't need to update it again
+      if (state.layers && !isEqual(state.layers, store.getState().layers.layers)) {
+        store.dispatch(layerSynced(state.layers));
+        console.log('received layers', state.layers);
+      }
+      if (state.tokens && !isEqual(state.tokens, store.getState().tokens.tokens)) {
+        store.dispatch(tokenSynced(state.tokens));
+        console.log('received tokens', state.tokens);
+      }
+      if (state.inventory && !isEqual(state.inventory, store.getState().inventory.inventoryItems)) {
+        store.dispatch(inventorySynced(state.inventory));
+        console.log('received inventory', state.inventory);
+      }
+      if (state.colors && !isEqual(state.colors, store.getState().colors.colors)) {
+        store.dispatch(colorSynced(state.colors));
+        console.log('received colors', state.colors);
+      }
+      if (state.notes && !isEqual(state.notes, store.getState().notes.notes)) {
+        store.dispatch(noteSynced(state.notes));
+        console.log('received notes', state.notes);
+      }
+      updatingFromServer = false;
   }
   );
 

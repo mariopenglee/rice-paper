@@ -247,28 +247,34 @@ const Grid: React.FC = () => {
         });
 
         // Render tokens for the current layer
-        const renderedTokensForLayer: JSX.Element[] = tokens
-            .filter((token: TokenType) => token.layer === layer.id) // Filter tokens by current layer
-            .map((token: TokenType) => (
-            <Token
-                key={token.id}
-                token={token}
-                inventoryRef={inventoryRef}
-                gridRef={gridRef}
-            />
-            ));
+        let renderedTokensForLayer: JSX.Element[] = [];
+        if (tokens) {
+            renderedTokensForLayer = tokens
+                .filter((token: TokenType) => token.layer === layer.id) // Filter tokens by current layer
+                .map((token: TokenType) => (
+                <Token
+                    key={token.id}
+                    token={token}
+                    inventoryRef={inventoryRef}
+                    gridRef={gridRef}
+                />
+                ));
+        }
 
         // Render notes for the current layer
-        const renderedNotesForLayer: JSX.Element[] = notes
-            .filter((note: NoteType) => note.layer === layer.id) // Filter notes by current layer
-            .map((note: NoteType) => (
-            <Note
-                key={note.id}
-                note={note}
-                gridRef={gridRef}
-            />
-            ));
-
+        let renderedNotesForLayer: JSX.Element[] = [];
+        if (notes) {
+            renderedNotesForLayer = notes
+                .filter((note: NoteType) => note.layer === layer.id) // Filter notes by current layer
+                .map((note: NoteType) => (
+                <Note
+                    key={note.id}
+                    note={note}
+                    gridRef={gridRef}
+                />
+                ));
+        }
+        
         return (
             <div
             key={layerIndex}
